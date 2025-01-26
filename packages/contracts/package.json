@@ -19,6 +19,8 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.0",
     "@nomicfoundation/hardhat-viem": "^2.0.0",
+    "@nomicfoundation/hardhat-ignition":"^0.15.9",
+    "@nomicfoundation/ignition-core":"^0.15.9",
     "hardhat": "^2.22.18"
   },
   "dependencies": {
