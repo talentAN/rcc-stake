@@ -48,7 +48,7 @@ contract RCCStake is
         uint256 accRCCPerST /** 每个质押代币的累计 RCC 奖励 */;
         uint256 stTokenAmount /**质押的总代币数量 */;
         uint256 minDepositAmount /** 最小质押金额 */;
-        uint256 unStakeLockedBlocks /** 解除质押的锁定区块数 */;
+        uint256 unstakeLockedBlocks /** 解除质押的锁定区块数 */;
     }
     struct UnstakeRequest {
         // Request withdraw amount
@@ -258,7 +258,7 @@ contract RCCStake is
      */
     function setEndBlock(uint256 _endBlock) public onlyRole(ADMIN_ROLE) {
         require(
-            _startBlock <= _endBlock,
+            startBlock <= _endBlock,
             "start block must be less than end block"
         );
         endBlock = _endBlock;
@@ -316,7 +316,7 @@ contract RCCStake is
                 accRCCPerST: 0,
                 stTokenAmount: 0,
                 minDepositAmount: _minDepositAmount,
-                unStakeLockedBlocks: _unstakeLockedBlocks
+                unstakeLockedBlocks: _unstakeLockedBlocks
             })
         );
         emit AddPool(
@@ -401,7 +401,7 @@ contract RCCStake is
         uint256 _poolId,
         address _user
     ) external view checkPid(_poolId) returns (uint256) {
-        return pendingRCCByBlockNumber(_pid, _user, block.number);
+        return pendingRCCByBlockNumber(_poolId, _user, block.number);
     }
 
     /**
@@ -411,9 +411,9 @@ contract RCCStake is
         uint256 _poolId,
         address _user,
         uint256 _blockNumber
-    ) external view returns (uint256) {
+    ) public view returns (uint256) {
         Pool storage pool_ = pool[_poolId];
-        User storage user_ = users[_poolId][_user];
+        User storage user_ = user[_poolId][_user];
         uint256 accRCCPerST = pool_.accRCCPerST;
         uint256 stSupply = pool_.stTokenAmount;
         if (_blockNumber < pool_.lastRewardBlock && stSupply != 0) {
@@ -440,7 +440,7 @@ contract RCCStake is
         uint256 _pid,
         address _user
     ) external view checkPid(_pid) returns (uint256) {
-        return users[_pid][_user].stAmount;
+        return user[_pid][_user].stAmount;
     }
 
     /**
@@ -455,7 +455,7 @@ contract RCCStake is
         checkPid(_poolId)
         returns (uint256 requestAmount, uint256 pendingWithdrawAmount)
     {
-        User storage user_ = users[_poolId][_user];
+        User storage user_ = user[_poolId][_user];
         for (uint256 i = 0; i < user_.requests.length; i++) {
             if (user_.requests[i].unlockBlocks <= block.number) {
                 pendingWithdrawAmount =
@@ -549,7 +549,7 @@ contract RCCStake is
         uint256 _amount
     ) public whenNotWithdrawPaused checkPid(_pid) {
         // TODO: 为什么不接受ETH的质押
-        require(users[_pid] != 0, "deposit not support ETH staking");
+        require(_pid != 0, "deposit not support ETH staking");
         Pool storage pool_ = pool[_pid];
         require(_amount > pool_.minDepositAmount, "invalid deposit amount");
         if (_amount > 0) {
@@ -573,7 +573,7 @@ contract RCCStake is
         uint256 _amount
     ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
         Pool storage pool_ = pool[_pid];
-        User storage user_ = users[_pid][msg.sender];
+        User storage user_ = user[_pid][msg.sender];
         require(user_.stAmount >= _amount, "insufficient staking amount");
         updatePool(_pid);
         uint256 pendingRCC_ = (user_.stAmount * pool_.accRCCPerST) /
@@ -610,7 +610,7 @@ contract RCCStake is
         uint256 _pid
     ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
         Pool storage pool_ = pool[_pid];
-        User storage user_ = users[_pid][msg.sender];
+        User storage user_ = user[_pid][msg.sender];
         uint256 pendingWithdraw_;
         uint256 popNum_;
         // 跳过解锁时间小于当前区块的请求
@@ -650,7 +650,7 @@ contract RCCStake is
         uint256 _pid
     ) public whenNotPaused checkPid(_pid) whenNotClaimPaused {
         Pool storage pool_ = pool[_pid];
-        User storage user_ = users[_pid][msg.sender];
+        User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
         uint256 pendingRCC_ = (user_.stAmount * pool_.accRCCPerST) /
             (1 ether) -
@@ -661,7 +661,7 @@ contract RCCStake is
             _safeRCCTransfer(msg.sender, pendingRCC_);
         }
         user_.finishedRCC = (user_.stAmount * pool_.accRCCPerST) / (1 ether);
-        emit Claim(msg.sender, _pid, pendingRCC_, block.number);
+        emit Claim(msg.sender, _pid, pendingRCC_);
     }
 
     // ************************************** INTERNAL FUNCTION **************************************
@@ -674,7 +674,7 @@ contract RCCStake is
      */
     function _deposit(uint256 _pid, uint256 _amount) internal {
         Pool storage pool_ = pool[_pid];
-        User storage user_ = users[_pid][msg.sender];
+        User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
     }
 
