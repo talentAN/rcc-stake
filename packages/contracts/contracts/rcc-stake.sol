@@ -46,6 +46,7 @@ contract RCCStake is
         uint256 poolWeight /** 质押池的权重 */;
         uint256 lastRewardBlock /** 上次奖励发放的区块高度 */;
         uint256 accRCCPerST /** 每个质押代币的累计 RCC 奖励 */;
+        uint256 stTokenAmount /**质押的总代币数量 */;
         uint256 minDepositAmount /** 最小质押金额 */;
         uint256 unStakeLockedBlocks /** 解除质押的锁定区块数 */;
     }
@@ -468,33 +469,246 @@ contract RCCStake is
     // ************************************** PUBLIC FUNCTION **************************************
     /**
      * @notice Update reward variables of the given pool to be up-to-date.
+     * 主要是更新
+     * - 池子里每单位代币累计发放的奖励；
+     * - 最后发放奖励区块的number；
      */
-    function updatePool(uint256 _poolId) public checkPid(_poolId) {
-        Pool storage pool_ = pool[_poolId];
+    function updatePool(uint256 _pid) public checkPid(_pid) {
+        Pool storage pool_ = pool[_pid];
+
         if (block.number <= pool_.lastRewardBlock) {
             return;
         }
+        // 在这段区块里，所有池子奖励的代币总和 * 池子的权重
         (bool success1, uint256 totalRCC) = getMultiplier(
             pool_.lastRewardBlock,
             block.number
         ).tryMul(pool_.poolWeight);
-        require(success1, "multiplier overflow");
-
+        require(success1, "overflow");
+        // 池子奖励的代币总和 * 池子的权重 / 池子总权重 = 该池子这段区块链奖励的代币总和
+        (success1, totalRCC) = totalRCC.tryDiv(totalPoolWeight);
+        require(success1, "overflow");
+        // 看这个池子里已质押的代币总数量
         uint256 stSupply = pool_.stTokenAmount;
+        // 要是有质押的代币
         if (stSupply > 0) {
+            // TODO: 乘个1 ether是什么意思呢？
             (bool success2, uint256 totalRCC_) = totalRCC.tryMul(1 ether);
-            require(success2, "totalRCC overflow");
-
+            require(success2, "overflow");
+            // 这段区块链里，每一单位代币要分的token数量
             (success2, totalRCC_) = totalRCC_.tryDiv(stSupply);
-            require(success2, "totalRCC overflow");
-
-            (bool success3, uint256 accRCCPerST) = totalRCC_.tryAdd(
-                pool_.poolWeight
+            require(success2, "overflow");
+            // 累计发放的记录上
+            (bool success3, uint256 accRCCPerST) = pool_.accRCCPerST.tryAdd(
+                totalRCC_
             );
-            require(success3, "totalRCC overflow");
+            require(success3, "overflow");
             pool_.accRCCPerST = accRCCPerST;
         }
+        // 更新最后计算奖励的区块
         pool_.lastRewardBlock = block.number;
-        emit UpdatePool(_poolId, pool_.lastRewardBlock, pool_.accRCCPerST);
+
+        emit UpdatePool(_pid, pool_.lastRewardBlock, totalRCC);
+    }
+
+    /**
+     * @notice Update reward variables for all pools. Be careful of gas spending!
+     */
+    function massUpdatePools() public {
+        /** TODO: 这个为啥用public，不用private */
+        uint256 length = pool.length;
+        for (uint256 i = 0; i < length; i++) {
+            updatePool(i);
+        }
+    }
+
+    /**
+     * @notice Deposit staking ETH for RCC rewards
+     */
+    function depositETH() public payable whenNotPaused {
+        Pool storage pool_ = pool[ETH_PID];
+        require(
+            pool_.stTokenAddress == address(0x0),
+            "ETH pool must be created first"
+        );
+
+        uint256 _amount = msg.value;
+        require(_amount > pool_.minDepositAmount, "invalid deposit amount");
+        _deposit(ETH_PID, _amount);
+    }
+
+    /**
+     * @notice Deposit staking token for RCC rewards
+     * Before depositing, user needs approve this contract to be able to spend or transfer their staking tokens
+     *
+     * @param _pid       Id of the pool to be deposited to
+     * @param _amount    Amount of staking tokens to be deposited
+     */
+    function deposit(
+        uint256 _pid,
+        uint256 _amount
+    ) public whenNotWithdrawPaused checkPid(_pid) {
+        // TODO: 为什么不接受ETH的质押
+        require(users[_pid] != 0, "deposit not support ETH staking");
+        Pool storage pool_ = pool[_pid];
+        require(_amount > pool_.minDepositAmount, "invalid deposit amount");
+        if (_amount > 0) {
+            IERC20(pool_.stTokenAddress).safeTransferFrom(
+                msg.sender,
+                address(this),
+                _amount
+            );
+        }
+        _deposit(_pid, _amount);
+    }
+
+    /**
+     * @notice Unstake staking tokens
+     *
+     * @param _pid       Id of the pool to be withdrawn from
+     * @param _amount    amount of staking tokens to be withdrawn
+     */
+    function unstake(
+        uint256 _pid,
+        uint256 _amount
+    ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
+        Pool storage pool_ = pool[_pid];
+        User storage user_ = users[_pid][msg.sender];
+        require(user_.stAmount >= _amount, "insufficient staking amount");
+        updatePool(_pid);
+        uint256 pendingRCC_ = (user_.stAmount * pool_.accRCCPerST) /
+            (1 ether) -
+            user_.finishedRCC;
+        if (pendingRCC_ > 0) {
+            user_.pendingRCC += pendingRCC_;
+        }
+        if (_amount > 0) {
+            user_.stAmount -= _amount;
+            user_.requests.push(
+                UnstakeRequest({
+                    amount: _amount,
+                    unlockBlocks: block.number + pool_.unstakeLockedBlocks
+                })
+            );
+        }
+        pool_.stTokenAmount -= _amount;
+        user_.finishedRCC += (user_.stAmount * pool_.accRCCPerST) / (1 ether);
+        emit RequestUnstake(msg.sender, _pid, _amount);
+    }
+
+    /**
+     * @notice Withdraw the unlock unstake amount
+     * @param _pid       Id of the pool to be withdrawn from
+     * 功能: 提取一个池子里所有的代币
+     * - 提取池子里所有的代币；
+     * - 拿走所有的奖励；
+     * - 更新池子
+     * - 发射事件
+     *
+     */
+    function withdraw(
+        uint256 _pid
+    ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
+        Pool storage pool_ = pool[_pid];
+        User storage user_ = users[_pid][msg.sender];
+        uint256 pendingWithdraw_;
+        uint256 popNum_;
+        // 跳过解锁时间小于当前区块的请求
+        for (uint256 i = 0; i < user_.requests.length; i++) {
+            if (user_.requests[i].unlockBlocks <= block.number) {
+                break;
+            }
+            pendingWithdraw_ = pendingWithdraw_ + user_.requests[i].amount;
+            popNum_++;
+        }
+        // TODO: 这啥意思
+        for (uint256 i = 0; i < user_.requests.length - popNum_; i++) {
+            user_.requests[i] = user_.requests[i + popNum_];
+        }
+        for (uint256 i = 0; i < popNum_; i++) {
+            user_.requests.pop();
+        }
+        if (pendingWithdraw_ > 0) {
+            if (pool_.stTokenAddress == address(0x0)) {
+                _safeETHTransfer(msg.sender, pendingWithdraw_);
+            } else {
+                IERC20(pool_.stTokenAddress).safeTransfer(
+                    msg.sender,
+                    pendingWithdraw_
+                );
+            }
+        }
+        emit Withdraw(msg.sender, _pid, pendingWithdraw_, block.number);
+    }
+
+    /**
+     * @notice Claim RCC tokens reward
+     *
+     * @param _pid       Id of the pool to be claimed from
+     */
+    function claim(
+        uint256 _pid
+    ) public whenNotPaused checkPid(_pid) whenNotClaimPaused {
+        Pool storage pool_ = pool[_pid];
+        User storage user_ = users[_pid][msg.sender];
+        updatePool(_pid);
+        uint256 pendingRCC_ = (user_.stAmount * pool_.accRCCPerST) /
+            (1 ether) -
+            user_.finishedRCC +
+            user_.pendingRCC;
+        if (pendingRCC_ > 0) {
+            user_.pendingRCC = 0;
+            _safeRCCTransfer(msg.sender, pendingRCC_);
+        }
+        user_.finishedRCC = (user_.stAmount * pool_.accRCCPerST) / (1 ether);
+        emit Claim(msg.sender, _pid, pendingRCC_, block.number);
+    }
+
+    // ************************************** INTERNAL FUNCTION **************************************
+
+    /**
+     * @notice Deposit staking token for RCC rewards
+     *
+     * @param _pid       Id of the pool to be deposited to
+     * @param _amount    Amount of staking tokens to be deposited
+     */
+    function _deposit(uint256 _pid, uint256 _amount) internal {
+        Pool storage pool_ = pool[_pid];
+        User storage user_ = users[_pid][msg.sender];
+        updatePool(_pid);
+    }
+
+    /**
+     * @notice Safe RCC transfer function, just in case if rounding error causes pool to not have enough RCCs
+     *
+     * @param _to        Address to get transferred RCCs
+     * @param _amount    Amount of RCC to be transferred
+     */
+    function _safeRCCTransfer(address _to, uint256 _amount) internal {
+        uint256 RCCBal = RCC.balanceOf(address(this));
+        if (_amount <= RCCBal) {
+            RCC.transfer(_to, _amount);
+        } else {
+            RCC.transfer(_to, RCCBal);
+        }
+    }
+
+    /**
+     * @notice Safe ETH transfer function
+     *
+     * @param _to        Address to get transferred ETH
+     * @param _amount    Amount of ETH to be transferred
+     */
+    function _safeETHTransfer(address _to, uint256 _amount) internal {
+        (bool success, bytes memory data) = address(_to).call{value: _amount}(
+            ""
+        );
+        require(success, "ETH transfer call failed");
+        if (data.length > 0) {
+            require(
+                abi.decode(data, (bool)),
+                "ETH transfer operation did not succeed"
+            );
+        }
     }
 }
