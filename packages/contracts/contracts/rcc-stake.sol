@@ -15,11 +15,13 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
  * 功能需求
  *
  * 质押池
- * - 质押池的创建
- * - 质押池的质押
- * - 质押池的赎回
- * - 质押池的奖励
- * - 质押池的奖励的发放
+ * - 质押池
+ *  - 创建
+ *  - 更新
+ *  - 暂停质押、暂停提取
+ *  - 发放奖励
+ * - 普通用户
+ *  -
  */
 
 // TODO: 看看这几个类型都是干啥的，需要用上翻译插件
@@ -42,25 +44,25 @@ contract RCCStake is
     // ************************************** DATA STRUCTURE **************************************
 
     struct Pool {
-        address stTokenAddress /** 质押池的代币地址 */;
+        address stakeTokenAddress /** 质押池的代币地址 */;
         uint256 poolWeight /** 质押池的权重 */;
         uint256 lastRewardBlock /** 上次奖励发放的区块高度 */;
-        uint256 accRCCPerST /** 每个质押代币的累计 RCC 奖励 */;
-        uint256 stTokenAmount /**质押的总代币数量 */;
+        uint256 accumulateRewardsPerStake /** 累计发放的奖励 / 每单位质押代币 */;
+        uint256 stakeTokenAmount /**质押的总代币数量 */;
         uint256 minDepositAmount /** 最小质押金额 */;
-        uint256 unstakeLockedBlocks /** 解除质押的锁定区块数 */;
+        uint256 unStakeLockedBlocks /** 已解除质押锁定区块数 */;
     }
-    struct UnstakeRequest {
+    struct UnStakeRequest {
         // Request withdraw amount
         uint256 amount;
-        // The blocks when the request withdraw amount can be released
-        uint256 unlockBlocks;
+        // The blocks when the request withdraw amount can be released，发起解除质押请求时，已解锁的区块数量
+        uint256 unlockBlocksCounts;
     }
     struct User {
-        uint256 stAmount;
-        uint256 finishedRCC;
-        uint256 pendingRCC;
-        UnstakeRequest[] requests;
+        uint256 stakeAmount;
+        uint256 finishedRewards;
+        uint256 pendingRewards;
+        UnStakeRequest[] requests;
     }
 
     // ************************************** STATE VARIABLES **************************************
@@ -102,17 +104,17 @@ contract RCCStake is
     event SetEndBlock(uint256 indexed endBlock);
     event SetRCCPerBlock(uint256 indexed rccPerBlock);
     event AddPool(
-        address indexed stTokenAddress,
+        address indexed stakeTokenAddress,
         uint256 indexed poolWeight,
         uint256 indexed lastRewardBlock,
         uint256 minDepositAmount,
-        uint256 unstakeLockedBlocks
+        uint256 unStakeLockedBlocks
     );
     // TODO:  UpdatePoolInfo 和  UpdatePool为啥要分两个？
     event UpdatePoolInfo(
         uint256 indexed poolId,
         uint256 indexed minDepositAmount,
-        uint256 indexed unstakeLockedBlocks
+        uint256 indexed unStakeLockedBlocks
     );
     event SetPoolWeight(
         uint256 indexed poolId,
@@ -285,10 +287,10 @@ contract RCCStake is
         uint256 _unstakeLockedBlocks,
         bool _withUpdate
     ) public onlyRole(ADMIN_ROLE) {
-        // Default the first pool to be ETH pool, so the first pool must be added with stTokenAddress = address(0x0)
+        // Default the first pool to be ETH pool, so the first pool must be added with stakeTokenAddress = address(0x0)
         if (pool.length > 0) {
             require(
-                pool[0].stTokenAddress == address(0x0),
+                pool[0].stakeTokenAddress == address(0x0),
                 "the first pool must be ETH pool"
             );
         } else {
@@ -310,13 +312,13 @@ contract RCCStake is
         totalPoolWeight += _poolWeight;
         pool.push(
             Pool({
-                stTokenAddress: _stTokenAddress,
+                stakeTokenAddress: _stTokenAddress,
                 poolWeight: _poolWeight,
                 lastRewardBlock: lastRewardBlock,
-                accRCCPerST: 0,
-                stTokenAmount: 0,
+                accumulateRewardsPerStake: 0,
+                stakeTokenAmount: 0,
                 minDepositAmount: _minDepositAmount,
-                unstakeLockedBlocks: _unstakeLockedBlocks
+                unStakeLockedBlocks: _unstakeLockedBlocks
             })
         );
         emit AddPool(
@@ -329,7 +331,7 @@ contract RCCStake is
     }
 
     /**
-     * @notice Update the given pool's info (minDepositAmount and unstakeLockedBlocks). Can only be called by admin.
+     * @notice Update the given pool's info (minDepositAmount and unStakeLockedBlocks). Can only be called by admin.
      */
     function updatePool(
         uint256 _poolId,
@@ -338,7 +340,7 @@ contract RCCStake is
     ) public checkPid(_poolId) onlyRole(ADMIN_ROLE) {
         require(_poolId < pool.length, "invalid pool id");
         pool[_poolId].minDepositAmount = _minDepositAmount;
-        pool[_poolId].unstakeLockedBlocks = _unstakeLockedBlocks;
+        pool[_poolId].unStakeLockedBlocks = _unstakeLockedBlocks;
         emit UpdatePoolInfo(_poolId, _minDepositAmount, _unstakeLockedBlocks);
     }
 
@@ -414,8 +416,8 @@ contract RCCStake is
     ) public view returns (uint256) {
         Pool storage pool_ = pool[_poolId];
         User storage user_ = user[_poolId][_user];
-        uint256 accRCCPerST = pool_.accRCCPerST;
-        uint256 stSupply = pool_.stTokenAmount;
+        uint256 accumulateRewardsPerStake = pool_.accumulateRewardsPerStake;
+        uint256 stSupply = pool_.stakeTokenAmount;
         if (_blockNumber < pool_.lastRewardBlock && stSupply != 0) {
             uint256 multiplier = getMultiplier(
                 pool_.lastRewardBlock,
@@ -423,14 +425,17 @@ contract RCCStake is
             );
             uint256 rccForPool = (multiplier * pool_.poolWeight) /
                 totalPoolWeight;
-            accRCCPerST = accRCCPerST + (rccForPool * (1 ether)) / stSupply;
+            accumulateRewardsPerStake =
+                accumulateRewardsPerStake +
+                (rccForPool * (1 ether)) /
+                stSupply;
         }
         return
-            user_.stAmount +
-            accRCCPerST /
+            user_.stakeAmount +
+            accumulateRewardsPerStake /
             (1 ether) -
-            user_.finishedRCC +
-            user_.pendingRCC;
+            user_.finishedRewards +
+            user_.pendingRewards;
     }
 
     /**
@@ -440,7 +445,7 @@ contract RCCStake is
         uint256 _pid,
         address _user
     ) external view checkPid(_pid) returns (uint256) {
-        return user[_pid][_user].stAmount;
+        return user[_pid][_user].stakeAmount;
     }
 
     /**
@@ -457,7 +462,7 @@ contract RCCStake is
     {
         User storage user_ = user[_poolId][_user];
         for (uint256 i = 0; i < user_.requests.length; i++) {
-            if (user_.requests[i].unlockBlocks <= block.number) {
+            if (user_.requests[i].unlockBlocksCounts <= block.number) {
                 pendingWithdrawAmount =
                     pendingWithdrawAmount +
                     user_.requests[i].amount;
@@ -489,7 +494,7 @@ contract RCCStake is
         (success1, totalRCC) = totalRCC.tryDiv(totalPoolWeight);
         require(success1, "overflow");
         // 看这个池子里已质押的代币总数量
-        uint256 stSupply = pool_.stTokenAmount;
+        uint256 stSupply = pool_.stakeTokenAmount;
         // 要是有质押的代币
         if (stSupply > 0) {
             // TODO: 乘个1 ether是什么意思呢？
@@ -499,11 +504,11 @@ contract RCCStake is
             (success2, totalRCC_) = totalRCC_.tryDiv(stSupply);
             require(success2, "overflow");
             // 累计发放的记录上
-            (bool success3, uint256 accRCCPerST) = pool_.accRCCPerST.tryAdd(
-                totalRCC_
-            );
+            (bool success3, uint256 accumulateRewardsPerStake) = pool_
+                .accumulateRewardsPerStake
+                .tryAdd(totalRCC_);
             require(success3, "overflow");
-            pool_.accRCCPerST = accRCCPerST;
+            pool_.accumulateRewardsPerStake = accumulateRewardsPerStake;
         }
         // 更新最后计算奖励的区块
         pool_.lastRewardBlock = block.number;
@@ -528,7 +533,7 @@ contract RCCStake is
     function depositETH() public payable whenNotPaused {
         Pool storage pool_ = pool[ETH_PID];
         require(
-            pool_.stTokenAddress == address(0x0),
+            pool_.stakeTokenAddress == address(0x0),
             "ETH pool must be created first"
         );
 
@@ -553,7 +558,7 @@ contract RCCStake is
         Pool storage pool_ = pool[_pid];
         require(_amount > pool_.minDepositAmount, "invalid deposit amount");
         if (_amount > 0) {
-            IERC20(pool_.stTokenAddress).safeTransferFrom(
+            IERC20(pool_.stakeTokenAddress).safeTransferFrom(
                 msg.sender,
                 address(this),
                 _amount
@@ -574,25 +579,28 @@ contract RCCStake is
     ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
         Pool storage pool_ = pool[_pid];
         User storage user_ = user[_pid][msg.sender];
-        require(user_.stAmount >= _amount, "insufficient staking amount");
+        require(user_.stakeAmount >= _amount, "insufficient staking amount");
         updatePool(_pid);
-        uint256 pendingRCC_ = (user_.stAmount * pool_.accRCCPerST) /
+        uint256 pendingRCC_ = (user_.stakeAmount *
+            pool_.accumulateRewardsPerStake) /
             (1 ether) -
-            user_.finishedRCC;
+            user_.finishedRewards;
         if (pendingRCC_ > 0) {
-            user_.pendingRCC += pendingRCC_;
+            user_.pendingRewards += pendingRCC_;
         }
         if (_amount > 0) {
-            user_.stAmount -= _amount;
+            user_.stakeAmount -= _amount;
             user_.requests.push(
-                UnstakeRequest({
+                UnStakeRequest({
                     amount: _amount,
-                    unlockBlocks: block.number + pool_.unstakeLockedBlocks
+                    unlockBlocksCounts: block.number + pool_.unStakeLockedBlocks
                 })
             );
         }
-        pool_.stTokenAmount -= _amount;
-        user_.finishedRCC += (user_.stAmount * pool_.accRCCPerST) / (1 ether);
+        pool_.stakeTokenAmount -= _amount;
+        user_.finishedRewards +=
+            (user_.stakeAmount * pool_.accumulateRewardsPerStake) /
+            (1 ether);
         emit RequestUnstake(msg.sender, _pid, _amount);
     }
 
@@ -615,7 +623,7 @@ contract RCCStake is
         uint256 popNum_;
         // 跳过解锁时间小于当前区块的请求
         for (uint256 i = 0; i < user_.requests.length; i++) {
-            if (user_.requests[i].unlockBlocks <= block.number) {
+            if (user_.requests[i].unlockBlocksCounts <= block.number) {
                 break;
             }
             pendingWithdraw_ = pendingWithdraw_ + user_.requests[i].amount;
@@ -629,10 +637,10 @@ contract RCCStake is
             user_.requests.pop();
         }
         if (pendingWithdraw_ > 0) {
-            if (pool_.stTokenAddress == address(0x0)) {
+            if (pool_.stakeTokenAddress == address(0x0)) {
                 _safeETHTransfer(msg.sender, pendingWithdraw_);
             } else {
-                IERC20(pool_.stTokenAddress).safeTransfer(
+                IERC20(pool_.stakeTokenAddress).safeTransfer(
                     msg.sender,
                     pendingWithdraw_
                 );
@@ -652,15 +660,18 @@ contract RCCStake is
         Pool storage pool_ = pool[_pid];
         User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
-        uint256 pendingRCC_ = (user_.stAmount * pool_.accRCCPerST) /
+        uint256 pendingRCC_ = (user_.stakeAmount *
+            pool_.accumulateRewardsPerStake) /
             (1 ether) -
-            user_.finishedRCC +
-            user_.pendingRCC;
+            user_.finishedRewards +
+            user_.pendingRewards;
         if (pendingRCC_ > 0) {
-            user_.pendingRCC = 0;
+            user_.pendingRewards = 0;
             _safeRCCTransfer(msg.sender, pendingRCC_);
         }
-        user_.finishedRCC = (user_.stAmount * pool_.accRCCPerST) / (1 ether);
+        user_.finishedRewards =
+            (user_.stakeAmount * pool_.accumulateRewardsPerStake) /
+            (1 ether);
         emit Claim(msg.sender, _pid, pendingRCC_);
     }
 
