@@ -21,7 +21,6 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
  *  - 暂停质押、暂停提取
  *  - 发放奖励
  * - 普通用户
- *  -
  */
 
 // TODO: 看看这几个类型都是干啥的，需要用上翻译插件
@@ -166,6 +165,9 @@ contract RCCStake is
     // ************************************** FUNCTIONS **************************************
     /**
      * @notice Set RCC token address. Set basic info when deploying.
+     * - 执行初始化动作
+     * - 设置角色权限
+     * - 设置代币奖励相关信息
      */
 
     function initialize(
@@ -174,13 +176,12 @@ contract RCCStake is
         uint256 _endBlock,
         uint256 _rccPerBlock
     ) public initializer {
-        /** TODO:  initializer 是保留的关键字？ */
         require(
             _startBlock <= _endBlock,
             "start block must be less than end block"
         );
         require(_rccPerBlock > 0, "rcc per block must be greater than 0");
-
+        // TODO: 看代码，下面一行代码啥也没干呀
         __AccessControl_init();
         __UUPSUpgradeable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -193,6 +194,7 @@ contract RCCStake is
         rccPerBlock = _rccPerBlock;
     }
 
+    // TODO: 这个函数在这里什么意思？又没有调用的地方
     function _authorizeUpgrade(
         address newImplementation
     ) internal override onlyRole(UPGRADE_ROLE) {}
@@ -243,6 +245,7 @@ contract RCCStake is
         emit UnpausedClaim();
     }
 
+    // TODO: 这俩函数为啥单独拎出来，设置区块的放一类，设置池子放另一类？
     /**
      * @notice Update staking start block. Can only be called by admin.
      */
@@ -281,11 +284,11 @@ contract RCCStake is
      * DO NOT add the same staking token more than once. RCC rewards will be messed up if you do
      */
     function addPool(
-        address _stTokenAddress,
-        uint256 _poolWeight,
+        address _stakeTokenAddress,
+        uint256 _poolWeight /** TODO: 这权重放的是不是太随意了？ */,
         uint256 _minDepositAmount,
-        uint256 _unstakeLockedBlocks,
-        bool _withUpdate
+        uint256 _unStakeLockedBlocks,
+        bool _withUpdate /** 是指创建这个池子的同时要不要同时更新别的池子（因为权重有了变化） */
     ) public onlyRole(ADMIN_ROLE) {
         // Default the first pool to be ETH pool, so the first pool must be added with stakeTokenAddress = address(0x0)
         if (pool.length > 0) {
@@ -295,13 +298,12 @@ contract RCCStake is
             );
         } else {
             require(
-                _stTokenAddress == address(0x0),
+                _stakeTokenAddress == address(0x0),
                 "the first pool must be ETH pool"
             );
         }
-        // allow the min deposit amount equal to 0
-        //require(_minDepositAmount > 0, "invalid min deposit amount");
-        require(_unstakeLockedBlocks > 0, "invalid withdraw locked blocks");
+        // allow the min deposit amount equal to 0 TODO: 为啥？存款0有什么意义？
+        require(_unStakeLockedBlocks > 0, "invalid withdraw locked blocks"); // TODO: 这个等于0也可以吧？
         require(block.number < endBlock, "already ended");
         if (_withUpdate) {
             massUpdatePools();
@@ -312,36 +314,37 @@ contract RCCStake is
         totalPoolWeight += _poolWeight;
         pool.push(
             Pool({
-                stakeTokenAddress: _stTokenAddress,
+                stakeTokenAddress: _stakeTokenAddress,
                 poolWeight: _poolWeight,
                 lastRewardBlock: lastRewardBlock,
                 accumulateRewardsPerStake: 0,
                 stakeTokenAmount: 0,
                 minDepositAmount: _minDepositAmount,
-                unStakeLockedBlocks: _unstakeLockedBlocks
+                unStakeLockedBlocks: _unStakeLockedBlocks
             })
         );
         emit AddPool(
-            _stTokenAddress,
+            _stakeTokenAddress,
             _poolWeight,
             lastRewardBlock,
             _minDepositAmount,
-            _unstakeLockedBlocks
+            _unStakeLockedBlocks
         );
     }
 
     /**
      * @notice Update the given pool's info (minDepositAmount and unStakeLockedBlocks). Can only be called by admin.
+     * 这就是函数签名的作用，函数重名没事儿，还有参数返回值啥的呢；
      */
     function updatePool(
         uint256 _poolId,
         uint256 _minDepositAmount,
-        uint256 _unstakeLockedBlocks
+        uint256 _unStakeLockedBlocks
     ) public checkPid(_poolId) onlyRole(ADMIN_ROLE) {
         require(_poolId < pool.length, "invalid pool id");
         pool[_poolId].minDepositAmount = _minDepositAmount;
-        pool[_poolId].unStakeLockedBlocks = _unstakeLockedBlocks;
-        emit UpdatePoolInfo(_poolId, _minDepositAmount, _unstakeLockedBlocks);
+        pool[_poolId].unStakeLockedBlocks = _unStakeLockedBlocks;
+        emit UpdatePoolInfo(_poolId, _minDepositAmount, _unStakeLockedBlocks);
     }
 
     /**
@@ -490,7 +493,8 @@ contract RCCStake is
             block.number
         ).tryMul(pool_.poolWeight);
         require(success1, "overflow");
-        // 池子奖励的代币总和 * 池子的权重 / 池子总权重 = 该池子这段区块链奖励的代币总和
+        // 池子奖励的代币总和 * 池子的权重 / 池子总权重 = 该池子这段区块链奖励的代币总和;
+        // 之所以要分步计算，就是避免中间某个步骤计算溢出导致错误；
         (success1, totalRCC) = totalRCC.tryDiv(totalPoolWeight);
         require(success1, "overflow");
         // 看这个池子里已质押的代币总数量
