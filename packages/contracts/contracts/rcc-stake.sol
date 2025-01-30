@@ -11,18 +11,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-/**
- * 功能需求
- *
- * 质押池
- * - 质押池
- *  - 创建
- *  - 更新
- *  - 暂停质押、暂停提取
- *  - 发放奖励
- * - 普通用户
- */
-
+// 这个合约里有一个隐藏条件，就是我针对一个block发放的代币奖励是固定的，所有的池子靠权重来分配对应代币；池子里，再按照用户质押的数量，进行分配结算；
 // TODO: 看看这几个类型都是干啥的，需要用上翻译插件
 contract RCCStake is
     Initializable,
@@ -40,7 +29,7 @@ contract RCCStake is
     bytes32 public constant UPGRADE_ROLE = keccak256("upgrade_manager_role");
     uint256 public constant ETH_PID = 0;
 
-    // ************************************** DATA STRUCTURE **************************************
+    // ************************************** DATA STRUCTURE *****************x谢谢*********************
 
     struct Pool {
         address stakeTokenAddress /** 质押池的代币地址 */;
@@ -334,7 +323,11 @@ contract RCCStake is
 
     /**
      * @notice Update the given pool's info (minDepositAmount and unStakeLockedBlocks). Can only be called by admin.
-     * 这就是函数签名的作用，函数重名没事儿，还有参数返回值啥的呢；
+     * 这就是函数签名的作用，函数重名没事儿，还有参数返回值啥的呢；、
+     *
+     * 更新池子干了啥事儿
+     * - 改了最小存入金额
+     * - 不能提取的区块锁定区
      */
     function updatePool(
         uint256 _poolId,
@@ -478,13 +471,19 @@ contract RCCStake is
     /**
      * @notice Update reward variables of the given pool to be up-to-date.
      * 主要是更新
-     * - 池子里每单位代币累计发放的奖励；
+     * - 池子里每单位代币累计发放的奖励；（TODO: 这个数据的参考价值有多高呢？）
      * - 最后发放奖励区块的number；
+     * - 更新整个池子，累计应该方法的奖励；
      */
     function updatePool(uint256 _pid) public checkPid(_pid) {
         Pool storage pool_ = pool[_pid];
 
         if (block.number <= pool_.lastRewardBlock) {
+            return;
+        }
+        uint256 stakeTokenAmount = pool_.stakeTokenAmount;
+        if (stakeTokenAmount == 0) {
+            pool_.lastRewardBlock = block.number;
             return;
         }
         // 在这段区块里，所有池子奖励的代币总和 * 池子的权重
@@ -524,7 +523,11 @@ contract RCCStake is
      * @notice Update reward variables for all pools. Be careful of gas spending!
      */
     function massUpdatePools() public {
-        /** TODO: 这个为啥用public，不用private */
+        /** TODO: 这个方法为啥用public，不用 private 或 external？
+         * - 啥时候用public？希望外部调用的、状态变更函数、查询函数（合约状态）、接口函数、管理员功能
+         * - public和external咋区分，一般如果方法只需要在外部调用，用external，节省gas；所以，优先external，其次public；
+         */
+        /** 因为读取要消耗gas，所以弄一个变量么？ */
         uint256 length = pool.length;
         for (uint256 i = 0; i < length; i++) {
             updatePool(i);
@@ -557,7 +560,7 @@ contract RCCStake is
         uint256 _pid,
         uint256 _amount
     ) public whenNotWithdrawPaused checkPid(_pid) {
-        // TODO: 为什么不接受ETH的质押
+        // TODO: 为什么不接受ETH的质押，因为已经有了eth方法？那这两个方法为啥还要单独区分？
         require(_pid != 0, "deposit not support ETH staking");
         Pool storage pool_ = pool[_pid];
         require(_amount > pool_.minDepositAmount, "invalid deposit amount");
@@ -616,7 +619,6 @@ contract RCCStake is
      * - 拿走所有的奖励；
      * - 更新池子
      * - 发射事件
-     *
      */
     function withdraw(
         uint256 _pid
@@ -657,6 +659,9 @@ contract RCCStake is
      * @notice Claim RCC tokens reward
      *
      * @param _pid       Id of the pool to be claimed from
+     *
+     * 索取、主张、索赔
+     * TODO: 这段逻辑谁调用？
      */
     function claim(
         uint256 _pid
@@ -691,6 +696,49 @@ contract RCCStake is
         Pool storage pool_ = pool[_pid];
         User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
+        // 先处理已有质押的奖励
+        if (user_.stakeAmount > 0) {
+            (bool success1, uint256 accStakeToken) = user_.stakeAmount.tryMul(
+                pool_.accumulateRewardsPerStake
+            );
+            require(success1, "user stake amount overflow");
+            (success1, accStakeToken) = accStakeToken.tryDiv(1 ether);
+            require(success1, "accumulate rewards per stake overflow");
+
+            (bool success2, uint256 pendingRCC_) = accStakeToken.trySub(
+                user_.finishedRewards
+            );
+            require(success2, "pending rewards overflow");
+            if (pendingRCC_ > 0) {
+                (bool success3, uint256 _pendingRCC) = user_
+                    .pendingRewards
+                    .tryAdd(pendingRCC_);
+                require(success3, "pending rewards overflow");
+                user_.pendingRewards = _pendingRCC;
+            }
+        }
+        // 再处理新来的质押逻辑
+        if (_amount > 0) {
+            (bool success4, uint256 accStakeAmount) = _amount.tryMul(
+                user_.stakeAmount
+            );
+            require(success4, "accumulate stake amount overflow");
+            user_.stakeAmount = accStakeAmount;
+        }
+        // 把池子总的质押数量加上
+        (bool success5, uint256 _stakeTokenAmount) = pool_
+            .stakeTokenAmount
+            .tryAdd(_amount);
+        require(success5, "stake token amount overflow");
+        pool_.stakeTokenAmount = _stakeTokenAmount;
+
+        (bool success6, uint256 _finishedRewards) = user_.stakeAmount.tryMul(
+            pool_.accumulateRewardsPerStake
+        );
+        require(success6, "user stAmount mul accRCCPerST overflow");
+        user_.finishedRewards = _finishedRewards;
+
+        emit Deposit(msg.sender, _pid, _amount);
     }
 
     /**
@@ -713,8 +761,11 @@ contract RCCStake is
      *
      * @param _to        Address to get transferred ETH
      * @param _amount    Amount of ETH to be transferred
+     * FIXME: 什么函数适合放在 internal，只有内部调用的；哪些函数是只能放在内部调用呢？
+     * - 转账，涉及到钱的；也不完全这样说，角色权限 + 控制也可以，看取舍，修饰符，方法就那几个，遍历一下也可；
      */
     function _safeETHTransfer(address _to, uint256 _amount) internal {
+        // 这个是低级调用，给对方账户转账
         (bool success, bytes memory data) = address(_to).call{value: _amount}(
             ""
         );
