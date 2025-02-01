@@ -20,6 +20,7 @@ importers:
       '@types/chai-as-promised': ^7.1.6
       '@types/mocha': '>=9.1.0'
       chai: ^4.2.0
+      forge-std: ^1.1.2
       hardhat: ^2.22.18
       hardhat-gas-reporter: ^1.0.8
       solidity-coverage: ^0.8.1
@@ -41,6 +42,7 @@ importers:
       '@types/chai-as-promised': 7.1.8
       '@types/mocha': 10.0.10
       chai: 4.5.0
+      forge-std: 1.1.2
       hardhat: 2.22.18_ts-node@10.9.2+typescript@5.7.3
       hardhat-gas-reporter: 1.0.10_hardhat@2.22.18
       solidity-coverage: 0.8.14_hardhat@2.22.18
@@ -2051,6 +2053,10 @@ packages:
         optional: true
     dependencies:
       debug: 4.4.0
+    dev: true
+
+  /forge-std/1.1.2:
+    resolution: {integrity: sha512-Wfb0iAS9PcfjMKtGpWQw9mXzJxrWD62kJCUqqLcyuI0+VRtJ3j20XembjF3kS20qELYdXft1vD/SPFVWVKMFOw==}
     dev: true
 
   /form-data/2.5.2:
