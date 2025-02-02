@@ -145,9 +145,17 @@ contract RCCStakeTest is Test {
         uint256 expectedFinishedRCC = preFinishedRewards;
         uint256 expectedTotalStTokenAmount = prePoolStakeTokenAmount + 100;
 
-        assertEq(stakeAmount, expectedStAmount);
-        assertEq(finishedRewards, expectedFinishedRCC);
-        assertEq(stakeTokenAmount, expectedTotalStTokenAmount);
+        assertEq(stakeAmount, expectedStAmount, "Staking should be successful");
+        assertEq(
+            finishedRewards,
+            expectedFinishedRCC,
+            "Finished rewards should be correct"
+        );
+        assertEq(
+            stakeTokenAmount,
+            expectedTotalStTokenAmount,
+            "Total stake token amount should be correct"
+        );
 
         // 多存几次
         address(RCCStakeInstance).call{value: 200}(
