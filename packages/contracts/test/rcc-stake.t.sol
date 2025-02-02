@@ -4,20 +4,25 @@ pragma solidity ^0.8.20;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {RCCStake} from "../contracts/rcc-stake.sol";
-import {RccToken as RCC} from "../contracts/rcc.sol";
+import {RccToken} from "../contracts/rcc.sol";
 
 contract RCCStakeTest is Test {
-    RCCStake RCCStake;
-    RCC RCC;
+    RCCStake RCCStakeInstance;
+    RccToken RCCInstance;
 
     fallback() external payable {}
 
     receive() external payable {}
 
     function setUp() public {
-        RCC = new RCC(); // 所以new的结果是返回合约地址么？
-        RCCStake = new RCCStake();
-        RCCStake.initialize(RCC, 100, 100000000, 3000000000000000000);
+        RCCInstance = new RccToken(); // 所以new的结果是返回合约地址么？
+        RCCStakeInstance = new RCCStake();
+        RCCStakeInstance.initialize(
+            RCCInstance,
+            100,
+            100000000,
+            3000000000000000000
+        );
     }
 
     function test_AddPool() public {
@@ -28,7 +33,7 @@ contract RCCStakeTest is Test {
         uint256 _withdrawLockedBlocks = 100;
         bool _withUpdate = true;
 
-        RCCStake.addPool(
+        RCCStakeInstance.addPool(
             _stakeTokenAddress,
             _poolWeight,
             _minDepositAmount,
@@ -43,7 +48,7 @@ contract RCCStakeTest is Test {
             uint256 stakeTokenAmount /**质押的总代币数量 */,
             uint256 minDepositAmount /** 最小质押金额 */,
             uint256 unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStake.pool(0);
+        ) = RCCStakeInstance.pool(0);
 
         assertEq(stakeTokenAddress, _stakeTokenAddress);
         assertEq(poolWeight, _poolWeight);
@@ -56,7 +61,7 @@ contract RCCStakeTest is Test {
 
     function test_massUpdatePools() public {
         test_AddPool();
-        RCCStake.massUpdatePools();
+        RCCStakeInstance.massUpdatePools();
         (
             address stakeTokenAddress,
             uint256 poolWeight,
@@ -65,13 +70,13 @@ contract RCCStakeTest is Test {
             uint256 stakeTokenAmount /**质押的总代币数量 */,
             uint256 minDepositAmount /** 最小质押金额 */,
             uint256 unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStake.pool(0);
+        ) = RCCStakeInstance.pool(0);
         assertEq(minDepositAmount, 100);
         assertEq(unStakeLockedBlocks, 100);
         assertEq(lastRewardBlock, 100);
         // Set block.height (newHeight)
         vm.roll(1000);
-        RCCStake.massUpdatePools();
+        RCCStakeInstance.massUpdatePools();
         (
             stakeTokenAddress,
             poolWeight,
@@ -80,7 +85,7 @@ contract RCCStakeTest is Test {
             stakeTokenAmount /**质押的总代币数量 */,
             minDepositAmount /** 最小质押金额 */,
             unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStake.pool(0);
+        ) = RCCStakeInstance.pool(0);
         assertEq(minDepositAmount, 100);
         assertEq(unStakeLockedBlocks, 100);
         assertEq(lastRewardBlock, 100);
@@ -88,10 +93,10 @@ contract RCCStakeTest is Test {
 
     function test_SetPoolWeight() public {
         test_AddPool();
-        uint256 preTotalPoolWeight = RCCStake.totalPoolWeight();
-        RCCStake.setPoolWeight(0, 200, false);
-        (, uint256 poolWeight) = RCCStake.pool(0);
-        uint256 totalPoolWeight = RCCStake.totalPoolWeight();
+        uint256 preTotalPoolWeight = RCCStakeInstance.totalPoolWeight();
+        RCCStakeInstance.setPoolWeight(0, 200, false);
+        (, uint256 poolWeight, , , , , ) = RCCStakeInstance.pool(0);
+        uint256 totalPoolWeight = RCCStakeInstance.totalPoolWeight();
         uint256 expectedTotalPoolWeight = preTotalPoolWeight - 100 + 200;
         assertEq(poolWeight, 200);
         assertEq(totalPoolWeight, expectedTotalPoolWeight);
@@ -107,21 +112,20 @@ contract RCCStakeTest is Test {
             uint256 stakeTokenAmount /**质押的总代币数量 */,
             uint256 minDepositAmount /** 最小质押金额 */,
             uint256 unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStake.pool(0);
+        ) = RCCStakeInstance.pool(0);
         uint256 prePoolStakeTokenAmount = stakeTokenAmount;
         (
             uint stakeAmount,
             uint256 finishedRewards,
             uint256 pendingRewards
-        ) = RCCStake.users(
-                0,
-                address(this)
+        ) = RCCStakeInstance.users(
+                address(0)
             ); /** TODO: 这个语法没看懂，加个address this是干啥的？A:通过使用 address(this)，测试合约可以模拟一个真实用户的行为，查询自己（作为用户）的质押信息 */
         uint256 preStakeAmount = stakeAmount;
         uint256 preFinishedRewards = finishedRewards;
         uint256 prePendingRewards = pendingRewards;
         // 第一次质押
-        address(RCCStake).call{value: 100}(
+        address(RCCStakeInstance).call{value: 100}(
             abi.encodeWithSignature("depositNativeCurrency(address,uint256)")
         );
         (
@@ -132,11 +136,10 @@ contract RCCStakeTest is Test {
             stakeTokenAmount /**质押的总代币数量 */,
             minDepositAmount /** 最小质押金额 */,
             unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStake.pool(0);
+        ) = RCCStakeInstance.pool(0);
 
-        (stakeAmount, finishedRewards, pendingRewards) = RCCStake.users(
-            0,
-            address(this)
+        (stakeAmount, finishedRewards, pendingRewards) = RCCStakeInstance.users(
+            address(0)
         );
         uint256 expectedStAmount = preStakeAmount + 100;
         uint256 expectedFinishedRCC = preFinishedRewards;
@@ -147,40 +150,40 @@ contract RCCStakeTest is Test {
         assertEq(stakeTokenAmount, expectedTotalStTokenAmount);
 
         // 多存几次
-        address(RCCStake).call{value: 200}(
+        address(RCCStakeInstance).call{value: 200}(
             abi.encodeWithSignature("depositNativeCurrency(address,uint256)")
         );
 
         vm.roll(2000000);
-        RCCStake.unstake(0, 100);
-        address(RCCStake).call{value: 300}(
+        RCCStakeInstance.unstake(0, 100);
+        address(RCCStakeInstance).call{value: 300}(
             abi.encodeWithSignature("depositNativeCurrency(address,uint256)")
         );
         vm.roll(3000000);
-        RCCStake.unstake(0, 100);
-        address(RCCStake).call{value: 400 ether}(
+        RCCStakeInstance.unstake(0, 100);
+        address(RCCStakeInstance).call{value: 400 ether}(
             abi.encodeWithSignature("depositnativeCurrency()")
         );
 
         vm.roll(4000000);
-        RCCStake.unstake(0, 100);
-        address(RCCStake).call{value: 500 ether}(
+        RCCStakeInstance.unstake(0, 100);
+        address(RCCStakeInstance).call{value: 500 ether}(
             abi.encodeWithSignature("depositnativeCurrency()")
         );
 
         vm.roll(5000000);
-        RCCStake.unstake(0, 100);
-        address(RCCStake).call{value: 600 ether}(
+        RCCStakeInstance.unstake(0, 100);
+        address(RCCStakeInstance).call{value: 600 ether}(
             abi.encodeWithSignature("depositnativeCurrency()")
         );
 
         vm.roll(6000000);
-        RCCStake.unstake(0, 100);
-        address(RCCStake).call{value: 700 ether}(
+        RCCStakeInstance.unstake(0, 100);
+        address(RCCStakeInstance).call{value: 700 ether}(
             abi.encodeWithSignature("depositnativeCurrency()")
         );
 
-        RCCStake.withdraw(0);
+        RCCStakeInstance.withdraw(0);
 
         // TODO: 这里不该有一些对于数据的eq校验么？A：这些应该是给后续的测试准备用的；
     }
@@ -188,13 +191,13 @@ contract RCCStakeTest is Test {
     function test_Unstake() public {
         test_DepositNativeCurrency();
         vm.roll(1000);
-        RCCStake.unstake(0, 100);
+        RCCStakeInstance.unstake(0, 100);
 
         (
             uint256 stakeAmount,
             uint256 finishedRewards,
             uint256 pendingRewards
-        ) = RCCStake.user(0, address(this));
+        ) = RCCStakeInstance.user(0, address(this));
         assertEq(stakeAmount, 0);
         assertEq(finishedRewards, 0);
         assertGt(pendingRewards, 0);
@@ -207,7 +210,7 @@ contract RCCStakeTest is Test {
             uint256 stakeTokenAmount /**质押的总代币数量 */,
             uint256 minDepositAmount /** 最小质押金额 */,
             uint256 unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStake.pool(0);
+        ) = RCCStakeInstance.pool(0);
 
         uint256 expectedStakeTokenAmount = 0;
         assertEq(stakeTokenAmount, expectedStakeTokenAmount);
@@ -216,13 +219,13 @@ contract RCCStakeTest is Test {
     function test_Withdraw() public {
         test_Unstake();
         // FIXME: 语法还没弄懂
-        uint256 preContractBalance = address(RCCStake).balance;
+        uint256 preContractBalance = address(RCCStakeInstance).balance;
         uint256 preUserBalance = address(this).balance;
 
         vm.roll(10000);
-        RCCStake.withdraw(0);
+        RCCStakeInstance.withdraw(0);
 
-        uint256 postContractBalance = address(RCCStake).balance;
+        uint256 postContractBalance = address(RCCStakeInstance).balance;
         uint256 postUserBalance = address(this).balance;
         // Asserts left is strictly less than right.
         assertLt(postContractBalance, preContractBalance);
@@ -232,13 +235,13 @@ contract RCCStakeTest is Test {
 
     function test_claimAfterDeposit() public {
         test_DepositNativeCurrency();
-        RCC.transfer(address(RCCStake), 100000000000);
-        uint256 preUserRCCBalance = RCC.balanceOf(address(this));
+        RCCInstance.transfer(address(RCCStakeInstance), 100000000000);
+        uint256 preUserRCCBalance = RCCInstance.balanceOf(address(this));
 
         vm.roll(10000);
-        RCCStake.claim(0);
+        RCCStakeInstance.claim(0);
 
-        uint256 postUserRCCBalance = RCC.balanceOf(address(this));
+        uint256 postUserRCCBalance = RCCInstance.balanceOf(address(this));
         assertGt(postUserRCCBalance, preUserRCCBalance);
     }
 
@@ -248,8 +251,7 @@ contract RCCStakeTest is Test {
         uint256 _minDepositAmount = 100;
         uint256 _withdrawLockedBlocks = 100;
         bool _update = true;
-        RCCStake.addPool(
-            index,
+        RCCStakeInstance.addPool(
             _stakeTokenAddress,
             _poolWeight,
             _minDepositAmount,
