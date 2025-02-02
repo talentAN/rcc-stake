@@ -8,6 +8,7 @@ yarn-error.log
 # production
 dist
 docs-dist
+*/artifacts/*
 
 # misc
 .DS_Store
@@ -20,10 +21,3 @@ docs-dist
 .idea
 .vscode
 .husky
-# Assets
-public
-1-代金券录制case.cy
-jscpd-report/html/*
-jscpd-report/jscpd-report.json
-
-packages/bizx-infrastructure/loger/lib/analytic/analytic-map/*

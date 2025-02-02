@@ -2,6 +2,9 @@
   "name": "hardhat-project",
   "scripts": {
     "compile": "npx hardhat compile",
+    "test-forge": "forge test",
+    "test-forge-example": "forge test --match-path test/rcc-stake.t.sol",
+    "test-hh": "npx hardhat run scripts/example.js",
     "test": "npx hardhat test"
   },
   "devDependencies": {
@@ -16,6 +19,7 @@
     "@types/chai-as-promised": "^7.1.6",
     "@types/mocha": ">=9.1.0",
     "chai": "^4.2.0",
+    "forge": "2.3.0",
     "forge-std": "^1.1.2",
     "hardhat": "^2.22.18",
     "hardhat-gas-reporter": "^1.0.8",

@@ -2,11 +2,11 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/anzhen/zhuijian/__laboratory/rcc-stake/packages/contracts/contracts/Lock.sol": {
-      "lastModificationDate": 1737601354645,
-      "contentHash": "7eee587c347fe6b1de50c96688cb9477",
+      "lastModificationDate": 1738478336849,
+      "contentHash": "a5eb11f8999b5800b56dc6f6f445d069",
       "sourceName": "contracts/Lock.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -31,18 +31,18 @@
       },
       "imports": [],
       "versionPragmas": [
-        "^0.8.28"
+        "^0.8.20"
       ],
       "artifacts": [
         "Lock"
       ]
     },
     "/Users/anzhen/zhuijian/__laboratory/rcc-stake/packages/contracts/contracts/rcc-stake.sol": {
-      "lastModificationDate": 1738209418753,
-      "contentHash": "d4dee1c612c8491de204da8376d76793",
+      "lastModificationDate": 1738478172682,
+      "contentHash": "8f5ce9e595508d53bf8058e8768b88d4",
       "sourceName": "contracts/rcc-stake.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -76,7 +76,7 @@
         "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol"
       ],
       "versionPragmas": [
-        "^0.8.28"
+        "^0.8.22"
       ],
       "artifacts": [
         "RCCStake"
@@ -87,7 +87,7 @@
       "contentHash": "ef20fd32f5bdcc50bd466abc8fc7f181",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -126,7 +126,7 @@
       "contentHash": "8f19f64d2adadf448840908bbaf431c8",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -162,7 +162,7 @@
       "contentHash": "61a6b098d98b3b945beb7d9de481c025",
       "sourceName": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -203,7 +203,7 @@
       "contentHash": "5b9a49c25d7edbc48ffcbd2c7e8a40ef",
       "sourceName": "@openzeppelin/contracts/utils/Address.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -241,7 +241,7 @@
       "contentHash": "ac3b77dea52cfdb14498e0a306a34b01",
       "sourceName": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -281,7 +281,7 @@
       "contentHash": "2b2665ae9bdb1af440658741a77fe213",
       "sourceName": "@openzeppelin/contracts/utils/math/Math.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -320,7 +320,7 @@
       "contentHash": "f0cedd674b4863ee90d1521a92ab82df",
       "sourceName": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -356,7 +356,7 @@
       "contentHash": "b6c6348d1c4d3e890f8d8a885b2477c0",
       "sourceName": "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -395,7 +395,7 @@
       "contentHash": "c28aaa25d083a9a55bd9ec9e0b785122",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -433,7 +433,7 @@
       "contentHash": "6f7fac9fa0df6004375e18b7ff7edf4e",
       "sourceName": "@openzeppelin/contracts/access/IAccessControl.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -469,7 +469,7 @@
       "contentHash": "61838d7249e45e3941fc2a45d1091448",
       "sourceName": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -508,7 +508,7 @@
       "contentHash": "bf0119eb2a570f219729ff38b6cd1df8",
       "sourceName": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -544,7 +544,7 @@
       "contentHash": "6b5eac2b85500c3012977849cfd633d8",
       "sourceName": "@openzeppelin/contracts/utils/Errors.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -580,7 +580,7 @@
       "contentHash": "64a2b7a96950f0641c477993f3029477",
       "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC1822.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -616,7 +616,7 @@
       "contentHash": "c023a5b23ee35b40b3085e550ff3367f",
       "sourceName": "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -657,7 +657,7 @@
       "contentHash": "4e17c826a54a8ee1a185449d4695d07d",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC1967.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -693,7 +693,7 @@
       "contentHash": "0a5c323fd908535580597848b8e550fb",
       "sourceName": "@openzeppelin/contracts/proxy/beacon/IBeacon.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -729,7 +729,7 @@
       "contentHash": "e656d64c4ce918f3d13030b91c935134",
       "sourceName": "@openzeppelin/contracts/utils/StorageSlot.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -765,7 +765,7 @@
       "contentHash": "2133dc13536b4a6a98131e431fac59e1",
       "sourceName": "@openzeppelin/contracts/utils/Panic.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -801,7 +801,7 @@
       "contentHash": "2adca1150f58fc6f3d1f0a0f22ee7cca",
       "sourceName": "@openzeppelin/contracts/utils/math/SafeCast.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -837,7 +837,7 @@
       "contentHash": "6b7c5ee7a59c981072a804c99ab0fac9",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC1363.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -876,7 +876,7 @@
       "contentHash": "79af12d64eacc7d77b9ee2ac4b4d51ee",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC20.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -912,7 +912,7 @@
       "contentHash": "f808b485ee0cdc6768ee8385ae5f9a2a",
       "sourceName": "@openzeppelin/contracts/interfaces/IERC165.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -948,7 +948,7 @@
       "contentHash": "794db3115001aa372c79326fcfd44b1f",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -986,7 +986,7 @@
       "contentHash": "227a6eb2225701c12d9c959b758b6333",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -1027,7 +1027,7 @@
       "contentHash": "267d92fe4de67b1bdb3302c08f387dbf",
       "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -1065,7 +1065,7 @@
       "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -1097,11 +1097,11 @@
       ]
     },
     "/Users/anzhen/zhuijian/__laboratory/rcc-stake/packages/contracts/contracts/rcc.sol": {
-      "lastModificationDate": 1738201955518,
-      "contentHash": "385ac28bc406b4914ca6d6447c444d01",
+      "lastModificationDate": 1738478323941,
+      "contentHash": "bddc33e4202ee9d3dfc5e0706bc73900",
       "sourceName": "contracts/rcc.sol",
       "solcConfig": {
-        "version": "0.8.28",
+        "version": "0.8.22",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -1128,7 +1128,7 @@
         "@openzeppelin/contracts/token/ERC20/ERC20.sol"
       ],
       "versionPragmas": [
-        "^0.8.28"
+        "^0.8.20"
       ],
       "artifacts": [
         "RccToken"
