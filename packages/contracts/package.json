@@ -2,7 +2,7 @@
   "name": "hardhat-project",
   "scripts": {
     "compile": "npx hardhat compile",
-    "test-forge": "forge test",
+    "test-forge": "forge test --match-path test/rcc-stake.t.sol -vv --via-ir --debug",
     "test-forge-example": "forge test --match-path test/rcc-stake.t.sol",
     "test-hh": "npx hardhat run scripts/example.js",
     "test": "npx hardhat test"
