@@ -679,8 +679,7 @@ contract RCCStake is
         User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
         uint256 pendingRCC_ = (user_.stakeAmount *
-            pool_.accumulateRewardsPerStake) /
-            (1 ether) -
+            pool_.accumulateRewardsPerStake) -
             user_.finishedRewards +
             user_.pendingRewards;
         if (pendingRCC_ > 0) {

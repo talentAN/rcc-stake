@@ -91,7 +91,7 @@ contract RCCStakeTest is Test {
         ) = RCCStakeInstance.pool(0);
         assertEq(minDepositAmount, 100);
         assertEq(unStakeLockedBlocks, 100);
-        assertEq(lastRewardBlock, 100);
+        assertEq(lastRewardBlock, 1000);
     }
 
     function test_SetPoolWeight() public {
