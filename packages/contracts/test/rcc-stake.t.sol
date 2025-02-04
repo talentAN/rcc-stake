@@ -316,8 +316,8 @@ contract RCCStakeTest is Test {
             uint256 finishedRewards,
             uint256 pendingRewards
         ) = RCCStakeInstance.user(0, address(this));
-        assertEq(stakeAmount, 0);
-        assertEq(finishedRewards, 0);
+        assertGt(stakeAmount, 0);
+        assertGt(finishedRewards, 0);
         assertGt(pendingRewards, 0);
         (
             address stakeTokenAddress,

@@ -633,17 +633,18 @@ contract RCCStake is
     ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
         Pool storage pool_ = pool[_pid];
         User storage user_ = user[_pid][msg.sender];
+
         uint256 pendingWithdraw_;
         uint256 popNum_;
         // 跳过解锁时间小于当前区块的请求
         for (uint256 i = 0; i < user_.requests.length; i++) {
-            if (user_.requests[i].unlockBlocksCounts <= block.number) {
+            if (user_.requests[i].unlockBlocksCounts > block.number) {
                 break;
             }
             pendingWithdraw_ = pendingWithdraw_ + user_.requests[i].amount;
             popNum_++;
         }
-        // TODO: 这啥意思
+        // 这里有个隐含逻辑，解锁时间是递增的
         for (uint256 i = 0; i < user_.requests.length - popNum_; i++) {
             user_.requests[i] = user_.requests[i + popNum_];
         }
