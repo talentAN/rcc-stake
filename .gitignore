@@ -3,6 +3,8 @@
 # log file
 console-history.txt
 
+# envs
+
 # dependencies
 node_modules
 npm-debug.log*

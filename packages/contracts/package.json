@@ -28,6 +28,7 @@
     "@types/mocha": ">=9.1.0",
     "@types/node": "*",
     "chai": "^4.2.0",
+    "dotenv": "^16.4.7",
     "ethers": "^6.6.0",
     "forge": "2.3.0",
     "forge-std": "^1.1.2",
