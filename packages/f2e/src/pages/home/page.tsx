@@ -48,8 +48,6 @@ const Home = () => {
     }
   }, [stakeContract, address]);
 
-  return <div>hhhhhhh</div>;
-
   return (
     <Box display={'flex'} flexDirection={'column'} alignItems={'center'} width={'100%'}>
       <Typography sx={{ fontSize: '30px', fontWeight: 'bold' }}>Rcc Stake</Typography>
