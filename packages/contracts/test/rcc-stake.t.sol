@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 // TODO: 这个测试文件只能forge跑吧，hardhat能跑么？
 
 import {Test, console2, Vm} from "forge-std/Test.sol";
-import {RCCStake} from "../contracts/rcc-stake.sol";
-import {RccToken} from "../contracts/rcc.sol";
+import {RCCStake} from "../contracts/RCCStake.sol";
+import {RccToken} from "../contracts/RccToken.sol";
 
 contract RCCStakeTest is Test {
     RCCStake RCCStakeInstance;

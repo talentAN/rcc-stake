@@ -5,9 +5,11 @@
     "test-forge": "forge test --match-path test/rcc-stake.t.sol -vv --via-ir --debug",
     "test-forge-example": "forge test --match-path test/rcc-stake.t.sol",
     "test-hh": "npx hardhat run scripts/example.js",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "deploy": "npx ts-node scripts/deploy.ts"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
     "@nomicfoundation/hardhat-ignition": "^0.15.9",
     "@nomicfoundation/hardhat-ignition-viem": "^0.15.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
@@ -15,10 +17,13 @@
     "@nomicfoundation/hardhat-verify": "^2.0.0",
     "@nomicfoundation/hardhat-viem": "^2.0.0",
     "@nomicfoundation/ignition-core": "^0.15.9",
+    "@openzeppelin/hardhat-upgrades": "^3.9.0",
     "@types/chai": "^4.2.0",
     "@types/chai-as-promised": "^7.1.6",
     "@types/mocha": ">=9.1.0",
+    "@types/node": "*",
     "chai": "^4.2.0",
+    "ethers": "^6.6.0",
     "forge": "2.3.0",
     "forge-std": "^1.1.2",
     "hardhat": "^2.22.18",

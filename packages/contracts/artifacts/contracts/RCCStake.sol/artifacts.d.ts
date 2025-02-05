@@ -6,16 +6,16 @@
 import "hardhat/types/artifacts";
 import type { GetContractReturnType } from "@nomicfoundation/hardhat-viem/types";
 
-import { RccToken$Type } from "./RccToken";
+import { RCCStake$Type } from "./RCCStake";
 
 declare module "hardhat/types/artifacts" {
   interface ArtifactsMap {
-    ["RccToken"]: RccToken$Type;
-    ["contracts/rcc.sol:RccToken"]: RccToken$Type;
+    ["RCCStake"]: RCCStake$Type;
+    ["contracts/RCCStake.sol:RCCStake"]: RCCStake$Type;
   }
 
   interface ContractTypesMap {
-    ["RccToken"]: GetContractReturnType<RccToken$Type["abi"]>;
-    ["contracts/rcc.sol:RccToken"]: GetContractReturnType<RccToken$Type["abi"]>;
+    ["RCCStake"]: GetContractReturnType<RCCStake$Type["abi"]>;
+    ["contracts/RCCStake.sol:RCCStake"]: GetContractReturnType<RCCStake$Type["abi"]>;
   }
 }
