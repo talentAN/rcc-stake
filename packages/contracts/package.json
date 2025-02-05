@@ -6,7 +6,12 @@
     "test-forge-example": "forge test --match-path test/rcc-stake.t.sol",
     "test-hh": "npx hardhat run scripts/example.js",
     "test": "npx hardhat test",
-    "deploy": "npx ts-node scripts/deploy.ts"
+    "deploy": "npx ts-node scripts/deploy.ts",
+    "deploy-local": "npx ts-node scripts/deploy.ts --network localhost",
+    "start-local": "npx hardhat node",
+    "open-local-console": "npx hardhat console --network localhost",
+    "debug-local": "pnpm run start-local && pnpm run deploy-local && pnpm run open-local-console",
+    "debug-example": "const MyContract = await ethers.getContractAt(\"MyContract\", \"YOUR_CONTRACT_ADDRESS\")await MyContract.setValue(42)"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
