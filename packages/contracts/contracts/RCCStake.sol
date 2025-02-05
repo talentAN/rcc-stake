@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "./RCCStakeLib.sol";
 
 // 这个合约里有一个隐藏条件，就是我针对一个block发放的代币奖励是固定的，所有的池子靠权重来分配对应代币；池子里，再按照用户质押的数量，进行分配结算；
 // TODO: 看看这几个类型都是干啥的，需要用上翻译插件
@@ -31,27 +32,7 @@ contract RCCStake is
 
     // ************************************** DATA STRUCTURE **************************************
 
-    struct Pool {
-        address stakeTokenAddress /** 质押池的代币地址 */;
-        uint256 poolWeight /** 质押池的权重 */;
-        uint256 lastRewardBlock /** 上次发放奖励的区块 */;
-        uint256 accumulateRewardsPerStake /** 累计发放的奖励 / 每单位质押代币，每次发放后更新为0，未发放则持续累计 */;
-        uint256 stakeTokenAmount /**质押的总代币数量 */;
-        uint256 minDepositAmount /** 最小质押金额 */;
-        uint256 unStakeLockedBlocks /** 禁止解除质押的区块 */;
-    }
-    struct UnStakeRequest {
-        // Request withdraw amount
-        uint256 amount;
-        // The blocks when the request withdraw amount can be released，发起解除质押请求时，已解锁的区块数量
-        uint256 unlockBlocksCounts;
-    }
-    struct User {
-        uint256 stakeAmount;
-        uint256 finishedRewards;
-        uint256 pendingRewards;
-        UnStakeRequest[] requests;
-    }
+    // 见引用
 
     // ************************************** STATE VARIABLES **************************************
     // First block that RCCStake will start from
@@ -70,11 +51,11 @@ contract RCCStake is
     // Total pool weight / Sum of all pool weights
     uint256 public totalPoolWeight;
 
-    Pool[] public pool;
+    RCCStakeLib.Pool[] public pool;
 
     // ---------------- 状态变量 ----------------
     // pool id => user address => user info
-    mapping(uint256 => mapping(address => User)) public user;
+    mapping(uint256 => mapping(address => RCCStakeLib.User)) public user;
 
     // ************************************** EVENT **************************************
     event SetRCC(IERC20 indexed RCC);
@@ -205,28 +186,22 @@ contract RCCStake is
     /**
      * @notice Unpause withdraw. Can only be called by admin.
      */
-    function unpPauseWithdraw() public onlyRole(ADMIN_ROLE) {
-        require(!withdrawPaused, "withdraw has already been paused");
-        withdrawPaused = false;
-        emit UnpausedWithdraw();
+    function toggleWithdrawPause() external onlyRole(ADMIN_ROLE) {
+        withdrawPaused = !withdrawPaused;
+        if (withdrawPaused) {
+            emit PausedWithdraw();
+        } else {
+            emit UnpausedWithdraw();
+        }
     }
 
-    /**
-     * @notice Pause claim. Can only be called by admin.
-     */
-    function pauseClaim() public onlyRole(ADMIN_ROLE) {
-        require(!claimPaused, "claim has already been unpaused");
-        claimPaused = true;
-        emit PausedClaim();
-    }
-
-    /**
-     * @notice Pause unpauseClaim. Can only be called by admin.
-     */
-    function unpauseClaim() public onlyRole(ADMIN_ROLE) {
-        require(claimPaused, "claim has already been unpaused");
-        claimPaused = false;
-        emit UnpausedClaim();
+    function toggleClaimPause() external onlyRole(ADMIN_ROLE) {
+        claimPaused = !claimPaused;
+        if (claimPaused) {
+            emit PausedClaim();
+        } else {
+            emit UnpausedClaim();
+        }
     }
 
     // TODO: 这俩函数为啥单独拎出来，设置区块的放一类，设置池子放另一类？
@@ -234,10 +209,7 @@ contract RCCStake is
      * @notice Update staking start block. Can only be called by admin.
      */
     function setStartBlock(uint256 _startBlock) public onlyRole(ADMIN_ROLE) {
-        require(
-            _startBlock <= endBlock,
-            "start block must be less than end block"
-        );
+        require(_startBlock <= endBlock, "Invalid start block");
         startBlock = _startBlock;
         emit SetStartBlock(_startBlock);
     }
@@ -246,10 +218,7 @@ contract RCCStake is
      * @notice Update staking end block. Can only be called by admin.
      */
     function setEndBlock(uint256 _endBlock) public onlyRole(ADMIN_ROLE) {
-        require(
-            startBlock <= _endBlock,
-            "start block must be less than end block"
-        );
+        require(startBlock <= _endBlock, "Invalid end block");
         endBlock = _endBlock;
         emit SetEndBlock(_endBlock);
     }
@@ -258,7 +227,7 @@ contract RCCStake is
      * @notice Update the RCC reward amount per block. Can only be called by admin.
      */
     function setRCCPerBlock(uint256 _rccPerBlock) public onlyRole(ADMIN_ROLE) {
-        require(_rccPerBlock > 0, "rcc per block must be greater than 0");
+        require(_rccPerBlock > 0, "Invalid RCC per block");
         rccPerBlock = _rccPerBlock;
         emit SetRCCPerBlock(_rccPerBlock);
     }
@@ -297,7 +266,7 @@ contract RCCStake is
             : startBlock;
         totalPoolWeight += _poolWeight;
         pool.push(
-            Pool({
+            RCCStakeLib.Pool({
                 stakeTokenAddress: _stakeTokenAddress,
                 poolWeight: _poolWeight,
                 lastRewardBlock: lastRewardBlock,
@@ -406,8 +375,8 @@ contract RCCStake is
         address _user,
         uint256 _blockNumber
     ) public view returns (uint256) {
-        Pool storage pool_ = pool[_poolId];
-        User storage user_ = user[_poolId][_user];
+        RCCStakeLib.Pool storage pool_ = pool[_poolId];
+        RCCStakeLib.User storage user_ = user[_poolId][_user];
         uint256 accumulateRewardsPerStake = pool_.accumulateRewardsPerStake;
         uint256 stSupply = pool_.stakeTokenAmount;
         // 当前块 < pool 最后一次 rewards 后面的 block && 存在质押 => 该block有奖励要发放
@@ -452,7 +421,7 @@ contract RCCStake is
         checkPid(_poolId)
         returns (uint256 requestAmount, uint256 pendingWithdrawAmount)
     {
-        User storage user_ = user[_poolId][_user];
+        RCCStakeLib.User storage user_ = user[_poolId][_user];
         for (uint256 i = 0; i < user_.requests.length; i++) {
             if (user_.requests[i].unlockBlocksCounts <= block.number) {
                 pendingWithdrawAmount =
@@ -472,7 +441,7 @@ contract RCCStake is
      * - 更新整个池子，累计应该方法的奖励；
      */
     function updatePool(uint256 _pid) public checkPid(_pid) {
-        Pool storage pool_ = pool[_pid];
+        RCCStakeLib.Pool storage pool_ = pool[_pid];
         // 结算过了，返回
         if (block.number <= pool_.lastRewardBlock) {
             return;
@@ -537,7 +506,7 @@ contract RCCStake is
      * @notice Deposit staking ETH for RCC rewards
      */
     function depositETH() public payable whenNotPaused {
-        Pool storage pool_ = pool[ETH_PID];
+        RCCStakeLib.Pool storage pool_ = pool[ETH_PID];
         require(
             pool_.stakeTokenAddress == address(0x0),
             "ETH pool must be created first"
@@ -561,7 +530,7 @@ contract RCCStake is
     ) public whenNotWithdrawPaused checkPid(_pid) {
         // TODO: 为什么不接受ETH的质押，因为已经有了eth方法？那这两个方法为啥还要单独区分？
         require(_pid != 0, "deposit not support ETH staking");
-        Pool storage pool_ = pool[_pid];
+        RCCStakeLib.Pool storage pool_ = pool[_pid];
         require(_amount > pool_.minDepositAmount, "invalid deposit amount");
         if (_amount > 0) {
             IERC20(pool_.stakeTokenAddress).safeTransferFrom(
@@ -583,8 +552,8 @@ contract RCCStake is
         uint256 _pid,
         uint256 _amount
     ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
-        Pool storage pool_ = pool[_pid];
-        User storage user_ = user[_pid][msg.sender];
+        RCCStakeLib.Pool storage pool_ = pool[_pid];
+        RCCStakeLib.User storage user_ = user[_pid][msg.sender];
 
         require(
             user_.stakeAmount >= _amount,
@@ -606,7 +575,7 @@ contract RCCStake is
         if (_amount > 0) {
             user_.stakeAmount -= _amount;
             user_.requests.push(
-                UnStakeRequest({
+                RCCStakeLib.UnStakeRequest({
                     amount: _amount,
                     unlockBlocksCounts: block.number + pool_.unStakeLockedBlocks
                 })
@@ -632,8 +601,8 @@ contract RCCStake is
     function withdraw(
         uint256 _pid
     ) public whenNotPaused whenNotWithdrawPaused checkPid(_pid) {
-        Pool storage pool_ = pool[_pid];
-        User storage user_ = user[_pid][msg.sender];
+        RCCStakeLib.Pool storage pool_ = pool[_pid];
+        RCCStakeLib.User storage user_ = user[_pid][msg.sender];
 
         uint256 pendingWithdraw_;
         uint256 popNum_;
@@ -676,8 +645,8 @@ contract RCCStake is
     function claim(
         uint256 _pid
     ) public whenNotPaused checkPid(_pid) whenNotClaimPaused {
-        Pool storage pool_ = pool[_pid];
-        User storage user_ = user[_pid][msg.sender];
+        RCCStakeLib.Pool storage pool_ = pool[_pid];
+        RCCStakeLib.User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
         uint256 pendingRCC_ = (user_.stakeAmount *
             pool_.accumulateRewardsPerStake) -
@@ -702,8 +671,8 @@ contract RCCStake is
      * @param _amount    Amount of staking tokens to be deposited
      */
     function _deposit(uint256 _pid, uint256 _amount) internal {
-        Pool storage pool_ = pool[_pid];
-        User storage user_ = user[_pid][msg.sender];
+        RCCStakeLib.Pool storage pool_ = pool[_pid];
+        RCCStakeLib.User storage user_ = user[_pid][msg.sender];
         updatePool(_pid);
         // 先处理已有质押的奖励
         if (user_.stakeAmount > 0) {
