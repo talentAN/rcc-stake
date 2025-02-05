@@ -3,10 +3,11 @@ import dotenv from 'dotenv';
 import '@nomicfoundation/hardhat-toolbox-viem';
 import '@nomicfoundation/hardhat-ethers';
 import '@openzeppelin/hardhat-upgrades';
+import '@nomiclabs/hardhat-waffle';
 
 dotenv.config();
 
-const { SEPOLIA_RPC_URL, ETH_RPC_URL, PRIVATE_KEY } = process.env; // 读取环境变量
+const { SEPOLIA_RPC_URL = '', PRIVATE_KEY, ETHERSCAN_API_KEY, PRIVATE_KEY_SLAVE } = process.env; // 读取环境变量
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -19,10 +20,22 @@ const config: HardhatUserConfig = {
     }
   },
   networks: {
-    ropsten: {
+    hardhat: {
+      forking: {
+        url: SEPOLIA_RPC_URL,
+        blockNumber: 1350000 // 可选，您可以指定要 fork 的区块高度
+      }
+    },
+    sepolia: {
       url: SEPOLIA_RPC_URL,
-      accounts: [`0x${PRIVATE_KEY}`] // 注意将 PRIVATE_KEY 前加上 "0x"
+      accounts: [`0x${PRIVATE_KEY_SLAVE}`] // 注意将 PRIVATE_KEY 前加上 "0x"
     }
+  },
+  etherscan: {
+    apiKey: ETHERSCAN_API_KEY
+  },
+  sourcify: {
+    enabled: true
   }
 };
 
