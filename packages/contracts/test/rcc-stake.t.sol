@@ -105,206 +105,120 @@ contract RCCStakeTest is Test {
         assertEq(totalPoolWeight, expectedTotalPoolWeight);
     }
 
-    function test_DepositNativeCurrency() public {
-        test_AddPool();
-        (
-            address stakeTokenAddress,
-            uint256 poolWeight,
-            uint256 lastRewardBlock,
-            uint256 accumulateRewardsPerStake /** 累计发放的奖励 / 每单位质押代币 */,
-            uint256 stakeTokenAmount /**质押的总代币数量 */,
-            uint256 minDepositAmount /** 最小质押金额 */,
-            uint256 unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStakeInstance.pool(0);
-        uint256 prePoolStakeTokenAmount = stakeTokenAmount;
-        assertEq(
-            prePoolStakeTokenAmount,
-            0,
-            unicode"刚创建池子，池子里一个质押也没有"
+    function depositAndCheck(
+        uint256 amount,
+        uint256 expectedUserStake,
+        uint256 expectedFinishedRewards
+    ) private {
+        (bool success, ) = address(RCCStakeInstance).call{value: amount}(
+            abi.encodeWithSignature("depositETH()")
         );
+        require(success, "Deposit failed");
+
+        checkPoolAndUserState(
+            expectedUserStake,
+            expectedFinishedRewards,
+            expectedUserStake,
+            0
+        );
+    }
+
+    function unstakeAndCheck(
+        uint256 amount,
+        uint256 expectedUserStake,
+        uint256 expectedPoolStake
+    ) private {
+        RCCStakeInstance.unstake(0, amount);
+
+        (uint256 stakeAmount, , ) = RCCStakeInstance.user(0, address(this));
+        (, , , , uint256 stakeTokenAmount, , ) = RCCStakeInstance.pool(0);
+
+        assertEq(stakeAmount, expectedUserStake, unicode"用户质押更新成功");
+        assertEq(
+            stakeTokenAmount,
+            expectedPoolStake,
+            unicode"池子质押更新成功"
+        );
+    }
+
+    function checkPoolAndUserState(
+        uint256 expectedUserStake,
+        uint256 expectedFinishedRewards,
+        uint256 expectedPoolStake,
+        uint256 expectedPendingRewards
+    ) private {
         (
-            uint stakeAmount,
+            uint256 stakeAmount,
             uint256 finishedRewards,
             uint256 pendingRewards
         ) = RCCStakeInstance.user(0, address(this));
-        /** LOG:
-         * 这个语法没看懂，加个address this是干啥的？
-         * - A:通过使用 address(this)，测试合约可以模拟一个真实用户的行为，查询自己（作为用户）的质押信息
-         * - 但老子写这个问题的时候，没明白的是为啥要传两个参数，因为拿数据要拿到最底层，没有中间解构；
-         */
-        uint256 preStakeAmount = stakeAmount;
-        uint256 preFinishedRewards = finishedRewards;
-        uint256 prePendingRewards = pendingRewards;
-        assertEq(preStakeAmount, 0, unicode"刚创建池子，用户也没质押");
+        (, , , , uint256 stakeTokenAmount, , ) = RCCStakeInstance.pool(0);
 
-        // ************************************** 第一次质押  **************************************
-        (bool success, bytes memory data) = address(RCCStakeInstance).call{
-            value: 100
-        }(abi.encodeWithSignature("depositETH()"));
-        // console2.log("depositETH result:", success, string(data));
-        /**
-         * - 当你在合约外部（比如在测试合约中）访问另一个合约的状态变量时，你实际上是在调用该变量的 getter 函数。这就是为什么我们需要像调用函数那样使用 RCCStakeInstance.pool(0)，而不是 RCCStakeInstance.pool[0]
-         * - 外部合约获取一个结构体时，获取的是解构的数据，而不是完整的结构体；
-         */
-        (
-            stakeTokenAddress,
-            poolWeight,
-            lastRewardBlock,
-            accumulateRewardsPerStake /** 累计发放的奖励 / 每单位质押代币 */,
-            stakeTokenAmount /**质押的总代币数量 */,
-            minDepositAmount /** 最小质押金额 */,
-            unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStakeInstance.pool(0);
-        (stakeAmount, finishedRewards, pendingRewards) = RCCStakeInstance.user(
-            0,
-            address(this)
-        );
-        // done。如果参数为（0, address(this)，则编译无法通过； 现状是test case 过不去）;
-        uint256 expectedStAmount = preStakeAmount + 100;
-        uint256 expectedFinishedRCC = preFinishedRewards;
-        uint256 expectedTotalStTokenAmount = prePoolStakeTokenAmount + 100;
-
-        assertEq(
-            stakeTokenAmount,
-            expectedStAmount,
-            unicode"池子里该用户总质押更新成功"
-        );
+        assertEq(stakeAmount, expectedUserStake, unicode"用户质押数量不匹配");
         assertEq(
             finishedRewards,
-            expectedFinishedRCC,
-            "Finished rewards should be correct"
+            expectedFinishedRewards,
+            unicode"已完成奖励不匹配"
+        );
+        assertEq(
+            pendingRewards,
+            expectedPendingRewards,
+            unicode"待领取奖励不匹配"
         );
         assertEq(
             stakeTokenAmount,
-            expectedTotalStTokenAmount,
-            unicode"池子总质押更新成功"
+            expectedPoolStake,
+            unicode"池子总质押数量不匹配"
         );
-        // console2.log(
-        //     "depositETH deposit 100 result:",
-        //     unicode"池子总质押数量",
-        //     stakeTokenAmount
-        // );
-        // console2.log(unicode"用户质押数量", stakeAmount);
+    }
 
-        // ************************************** 多存几次  **************************************
-        (success, data) = address(RCCStakeInstance).call{value: 200 ether}(
-            abi.encodeWithSignature("depositETH()")
-        );
-        // console2.log("depositETH2 result:", success, string(data));
-        // 数据准备
-        expectedStAmount = expectedStAmount + 200 ether;
-        expectedTotalStTokenAmount = expectedTotalStTokenAmount + 200 ether;
-        (
-            stakeTokenAddress,
-            poolWeight,
-            lastRewardBlock,
-            accumulateRewardsPerStake /** 累计发放的奖励 / 每单位质押代币 */,
-            stakeTokenAmount /**质押的总代币数量 */,
-            minDepositAmount /** 最小质押金额 */,
-            unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStakeInstance.pool(0);
-        (stakeAmount, finishedRewards, pendingRewards) = RCCStakeInstance.user(
-            0,
-            address(this)
-        );
-        assertEq(
-            stakeAmount,
-            expectedStAmount,
-            unicode"池子里该用户总质押更新成功"
-        );
-        assertEq(
-            expectedTotalStTokenAmount,
-            stakeTokenAmount,
-            unicode"池子总质押更新成功"
-        );
-        // console2.log(
-        //     "depositETH deposit 200 ether result:",
-        //     unicode"池子总质押数量",
-        //     stakeTokenAmount
-        // );
-        // console2.log(unicode"用户质押数量", stakeAmount);
-        // 截止到这里都 ok
+    function multipleDepositsAndUnstakes() private {
+        uint256[5] memory deposits;
+        deposits[0] = 300 ether;
+        deposits[1] = 400 ether;
+        deposits[2] = 500 ether;
+        deposits[3] = 600 ether;
+        deposits[4] = 700 ether;
+
+        uint256[5] memory blockNumbers;
+        blockNumbers[0] = 3000000;
+        blockNumbers[1] = 4000000;
+        blockNumbers[2] = 5000000;
+        blockNumbers[3] = 6000000;
+        blockNumbers[4] = 7000000;
+
+        for (uint256 i = 0; i < deposits.length; i++) {
+            vm.roll(blockNumbers[i]);
+            RCCStakeInstance.unstake(0, 100);
+
+            (bool success, ) = address(RCCStakeInstance).call{
+                value: deposits[i]
+            }(abi.encodeWithSignature("depositETH()"));
+            require(success, "Deposit failed");
+            // 你可以在这里添加更多具体的检查
+        }
+    }
+
+    function test_DepositNativeCurrency() public {
+        test_AddPool();
+
+        // Initial checks
+        checkPoolAndUserState(0, 0, 0, 0);
+
+        // First deposit
+        depositAndCheck(100, 100, 0);
+
+        // Second deposit
+        depositAndCheck(200 ether, 200 ether + 100, 0);
+
+        // Unstake and deposit multiple times
         vm.roll(2000000);
-        // Start recording logs
-        RCCStakeInstance.unstake(0, 100);
-        (
-            stakeTokenAddress,
-            poolWeight,
-            lastRewardBlock,
-            accumulateRewardsPerStake /** 累计发放的奖励 / 每单位质押代币 */,
-            stakeTokenAmount /**质押的总代币数量 */,
-            minDepositAmount /** 最小质押金额 */,
-            unStakeLockedBlocks /** 已解除质押锁定区块数 */
-        ) = RCCStakeInstance.pool(0);
-        (stakeAmount, finishedRewards, pendingRewards) = RCCStakeInstance.user(
-            0,
-            address(this)
-        );
-        assertEq(stakeAmount, 200 ether, unicode"用户质押更新成功");
-        assertEq(stakeTokenAmount, 200 ether, unicode"池子质押更新成功");
-        // console2.log(
-        //     "unstake 100 result:",
-        //     unicode"池子总质押数量",
-        //     stakeTokenAmount
-        // );
-        // console2.log(unicode"用户质押数量", stakeAmount);
 
-        (success, data) = address(RCCStakeInstance).call{value: 300 ether}(
-            abi.encodeWithSignature("depositETH()")
-        );
-        // console2.log("depositETH 300 ether result:", success, string(data));
+        unstakeAndCheck(100, 200 ether, 200 ether);
 
-        vm.roll(3000000);
-        // TODO: 是这里出了问题
-        // vm.recordLogs();
-        RCCStakeInstance.unstake(0, 100);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        address(RCCStakeInstance).call{value: 400 ether}(
-            abi.encodeWithSignature("depositETH()")
-        );
-        // console2.log("depositETH 400 ether result:", success, string(data));
+        multipleDepositsAndUnstakes();
 
-        vm.roll(4000000);
-        RCCStakeInstance.unstake(0, 100);
-        address(RCCStakeInstance).call{value: 500 ether}(
-            abi.encodeWithSignature("depositETH()")
-        );
-        // console2.log("depositETH 500 ether result:", success, string(data));
-
-        vm.roll(5000000);
-        RCCStakeInstance.unstake(0, 100);
-        address(RCCStakeInstance).call{value: 600 ether}(
-            abi.encodeWithSignature("depositETH()")
-        );
-        // console2.log("depositETH 600 ether result:", success, string(data));
-
-        vm.roll(6000000);
-        RCCStakeInstance.unstake(0, 100);
-        address(RCCStakeInstance).call{value: 700 ether}(
-            abi.encodeWithSignature("depositETH()")
-        );
-        // console2.log("depositETH 700 ether result:", success, string(data));
         RCCStakeInstance.withdraw(0);
-        // Get recorded logs
-
-        // Print all recorded events
-        // for (uint i = 0; i < entries.length; i++) {
-        //     Vm.Log memory entry = entries[i];
-        //     console2.log("Event:");
-        //     console2.log("  Address:", entry.emitter);
-        //     console2.log("  Topic 1:", vm.toString(entry.topics[0]));
-        //     if (entry.topics.length > 1) {
-        //         console2.log("  Topic 2:", vm.toString(entry.topics[1]));
-        //     }
-        //     if (entry.topics.length > 2) {
-        //         console2.log("  Topic 3:", vm.toString(entry.topics[2]));
-        //     }
-        //     if (entry.topics.length > 3) {
-        //         console2.log("  Topic 4:", vm.toString(entry.topics[2]));
-        //     }
-        //     console2.log("  Data:", vm.toString(entry.data));
-        // }
-        // TODO: 这里不该有一些对于数据的eq校验么？A：这些应该是给后续的测试准备用的；
     }
 
     function test_Unstake() public {
