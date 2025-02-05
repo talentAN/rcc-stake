@@ -4,6 +4,7 @@
 console-history.txt
 
 # envs
+.env
 # dependencies
 node_modules
 npm-debug.log*
