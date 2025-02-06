@@ -4,6 +4,7 @@ import '@nomicfoundation/hardhat-toolbox-viem';
 import '@nomicfoundation/hardhat-ethers';
 import '@openzeppelin/hardhat-upgrades';
 // import '@nomiclabs/hardhat-waffle';
+// 上面的狗蛋是本地调试用的，注释了没法命令行调试了就；
 
 dotenv.config();
 

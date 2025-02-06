@@ -1,5 +1,28 @@
 import hre, { ethers, upgrades } from 'hardhat';
+import { readFileSync, writeFileSync } from 'fs';
 
+const writeLocalEnv = (address: any, filePath: string) => {
+  try {
+    // 读取 .env 文件内容
+    const fileContent = readFileSync(filePath, 'utf8');
+    // 使用正则表达式替换 ADDRESS 的值
+    const updatedContent = fileContent
+      .replace(
+        /NEXT_PUBLIC_RCC_TOKEN_ADDRESS=.*/g,
+        `NEXT_PUBLIC_RCC_TOKEN_ADDRESS=${address.token}`
+      )
+      .replace(
+        /NEXT_PUBLIC_RCC_STAKE_ADDRESS=.*/g,
+        `NEXT_PUBLIC_RCC_STAKE_ADDRESS=${address.stake}`
+      );
+    // 重新写入到 .env 文件
+    writeFileSync(filePath, updatedContent, 'utf8');
+
+    console.log('成功更新 .env.local 文件!');
+  } catch (error) {
+    console.error('写入 .env.local 文件出错:', error);
+  }
+};
 async function main() {
   try {
     //  部署获取到的Rcc Token 地址，所以，得先把 RCC token部署了
@@ -16,22 +39,27 @@ async function main() {
     console.log('Deploying RCCStake...');
     // 部署可升级的 RCCStake 合约
     const RCCStakeFactory = await ethers.getContractFactory('RCCStake');
-    console.log('1');
 
     const RCCStake = await upgrades.deployProxy(
       RCCStakeFactory,
       [rewardTokenAddress, startBlock, endBlock, RccPerBlock],
       { initializer: 'initialize' }
     );
-    console.log('2');
 
     // 等待交易被确认
     await RCCStake.waitForDeployment();
-    console.log('3');
 
     // 获取部署后的合约地址
     const rccStakeAddress = await RCCStake.getAddress();
     console.log('RCCStake deployed to:', rccStakeAddress);
+    // 更新前端的本地环境变量
+    writeLocalEnv(
+      {
+        token: RCCToken.address,
+        stake: rccStakeAddress
+      },
+      '../../f2e/.env.local'
+    );
   } catch (error) {
     console.error('Error during deployment:', error);
     process.exit(1);
