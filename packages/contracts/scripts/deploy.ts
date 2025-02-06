@@ -58,7 +58,7 @@ async function main() {
         token: RCCToken.address,
         stake: rccStakeAddress
       },
-      '../../f2e/.env.local'
+      '../f2e/.env.local'
     );
   } catch (error) {
     console.error('Error during deployment:', error);
