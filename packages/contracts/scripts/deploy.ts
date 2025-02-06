@@ -2,7 +2,7 @@ import hre, { ethers, upgrades } from 'hardhat';
 
 async function main() {
   try {
-    //  部署获取到的Rcc Token 地址，所以TODO: 首现，得先把 RCC token部署了
+    //  部署获取到的Rcc Token 地址，所以，得先把 RCC token部署了
     const RCCToken = await hre.viem.deployContract('RccToken');
     console.log('RCCToken deployed to:', RCCToken.address);
     const rewardTokenAddress = RCCToken.address;
@@ -13,16 +13,22 @@ async function main() {
     // 每个区块奖励的Rcc token的数量
     const RccPerBlock = '20000000000000000';
 
+    console.log('Deploying RCCStake...');
     // 部署可升级的 RCCStake 合约
     const RCCStakeFactory = await ethers.getContractFactory('RCCStake');
-    console.log('Deploying RCCStake...');
+    console.log('1');
+
     const RCCStake = await upgrades.deployProxy(
       RCCStakeFactory,
       [rewardTokenAddress, startBlock, endBlock, RccPerBlock],
       { initializer: 'initialize' }
     );
+    console.log('2');
+
     // 等待交易被确认
     await RCCStake.waitForDeployment();
+    console.log('3');
+
     // 获取部署后的合约地址
     const rccStakeAddress = await RCCStake.getAddress();
     console.log('RCCStake deployed to:', rccStakeAddress);

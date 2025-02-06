@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import '@nomicfoundation/hardhat-toolbox-viem';
 import '@nomicfoundation/hardhat-ethers';
 import '@openzeppelin/hardhat-upgrades';
-import '@nomiclabs/hardhat-waffle';
+// import '@nomiclabs/hardhat-waffle';
 
 dotenv.config();
 

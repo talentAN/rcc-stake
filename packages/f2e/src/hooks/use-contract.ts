@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Abi, Address, WalletClient } from 'viem';
+import { Abi, Address } from 'viem';
 import { useChainId, useWalletClient } from 'wagmi';
 import { getContract } from '../utils/contract-helper';
 import { StakeContractAddress } from '../utils/env';
@@ -21,8 +21,11 @@ export function useContract<TAbi extends Abi>(
   return useMemo(() => {
     if (!addressOrAddressMap || !abi || !chainId) return null;
     let address: Address | undefined;
-    if (typeof addressOrAddressMap === 'string') address = addressOrAddressMap;
-    else address = addressOrAddressMap[chainId];
+    if (typeof addressOrAddressMap === 'string') {
+      address = addressOrAddressMap;
+    } else {
+      address = addressOrAddressMap[chainId];
+    }
     if (!address) return null;
     try {
       return getContract({

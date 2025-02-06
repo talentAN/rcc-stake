@@ -14,6 +14,12 @@ import Layout from '../components/layout';
 
 const client = new QueryClient();
 
+/**
+ * _app.tsx 是一个自定义的 App 组件，用于覆盖 Next.js 内置的 App 组件。它可以让你在所有页面间共享布局或状态。
+ *
+ * 你可以在此文件中添加全局样式、提供上下文 Providers 或其他在所有页面共享的逻辑。
+ */
+
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <>
@@ -50,9 +56,3 @@ function MyApp({ Component, pageProps }: AppProps) {
 }
 
 export default MyApp;
-
-/**
- * _app.tsx 是一个自定义的 App 组件，用于覆盖 Next.js 内置的 App 组件。它可以让你在所有页面间共享布局或状态。
- *
- * 你可以在此文件中添加全局样式、提供上下文 Providers 或其他在所有页面共享的逻辑。
- */
