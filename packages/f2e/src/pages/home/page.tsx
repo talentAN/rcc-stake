@@ -4,7 +4,7 @@ import { useStakeContract } from '../../hooks/use-contract';
 import { useCallback, useEffect, useState } from 'react';
 import { Pid } from '../../utils';
 import { useAccount, useWalletClient } from 'wagmi';
-import { formatUnits, parseUnits, zeroAddress } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { toast } from 'react-toastify';
@@ -36,11 +36,40 @@ const Home = () => {
 
   const getStakedAmount = useCallback(async () => {
     if (address && stakeContract) {
-      // const res = await stakeContract?.read.poolLength();
-      const res = await stakeContract?.read.stakingBalance([Pid, address]);
-      setStakedAmount(formatUnits(res as bigint, 18));
+      try {
+        // 没有read方法，为什么？质押方法是可以实现的；看abi没问题，合约的方法也是view
+        const res = await stakeContract?.read?.stakingBalance?.([Pid, address]);
+        if (res) {
+          console.debug('xxx', res);
+          // console.debug('stake-res', formatUnits(res as bigint, 18));
+        } else {
+          console.debug('stake-res', 'No staking balance', res);
+        }
+        // setStakedAmount(formatUnits(res as bigint, 18));
+      } catch (error) {
+        console.debug('getStakedAmount-error', error);
+      }
     }
   }, [stakeContract, address]);
+
+  const addPool = async () => {
+    if (address && stakeContract) {
+      try {
+        const res = await stakeContract?.write?.addPool?.([
+          '0x0000000000000000000000000000000000000000',
+          100,
+          100,
+          100,
+          false
+        ]);
+        console.debug('addPool', res);
+      } catch (error) {
+        console.debug('addPool-error', error);
+      }
+    } else {
+      console.debug('fuck');
+    }
+  };
 
   useEffect(() => {
     if (stakeContract && address) {
@@ -76,9 +105,12 @@ const Home = () => {
           {!isConnected ? (
             <ConnectButton />
           ) : (
-            <LoadingButton variant='contained' loading={loading} onClick={handleStake}>
-              Stake
-            </LoadingButton>
+            <>
+              <LoadingButton variant='contained' loading={loading} onClick={handleStake}>
+                Stake
+              </LoadingButton>
+              <div onClick={addPool}>add pool</div>
+            </>
           )}
         </Box>
       </Box>
