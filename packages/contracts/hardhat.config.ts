@@ -41,4 +41,8 @@ const config: HardhatUserConfig = {
   }
 };
 
+// 配置 OpenZeppelin 插件
+process.env.DISABLE_UPGRADES_WARNINGS = 'true';
+process.env.DISABLE_UPGRADES_UNSAFE_ALLOW = 'true';
+
 export default config;
