@@ -25,7 +25,8 @@ const config: HardhatUserConfig = {
       forking: {
         url: SEPOLIA_RPC_URL,
         blockNumber: 1350000 // 可选，您可以指定要 fork 的区块高度
-      }
+      },
+      chainId: 1337 // 你自定义的 chainId
     },
     sepolia: {
       url: SEPOLIA_RPC_URL,
