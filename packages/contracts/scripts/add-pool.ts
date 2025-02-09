@@ -1,4 +1,4 @@
-const { ethers } = require('hardhat');
+import { ethers } from 'hardhat';
 
 // 替换为你的合约地址
 const contractAddress = '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9';
@@ -9,15 +9,20 @@ const contractABI = [
 ];
 async function main() {
   try {
-    const contract = await ethers.getContractAt(contractABI, contractAddress);
-    console.log(contract);
-    return;
-    const tx = await contract.addPool('0x0', 100, 100, 100, false);
-    await tx.wait();
-    console.log('add Pool成功:', tx);
+    // 获取网络连接
+    const [signer] = await ethers.getSigners();
+    // 使用 signer 连接到合约
+    const contract = new ethers.Contract(contractAddress, contractABI, signer);
+    console.log('Adding pool...');
+    const tx = await contract.addPool(ethers.ZeroAddress, 100, 100, 100, false);
+    console.log('Transaction sent:', tx.hash);
+    console.log('Pool added successfully');
   } catch (error) {
-    console.log('add 失败:', error);
+    console.error('Failed to add pool:', error);
   }
 }
 
-main();
+main().catch(error => {
+  console.error('add fail ', error);
+  process.exitCode = 1;
+});

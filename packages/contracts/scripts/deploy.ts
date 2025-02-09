@@ -39,6 +39,9 @@ async function main() {
     console.log('Deploying RCCStake...');
     // 部署可升级的 RCCStake 合约
     const RCCStakeFactory = await ethers.getContractFactory('RCCStake');
+    // 没问题，rcctoken的code是有的
+    // const code = await ethers.provider.getCode(RCCToken.address);
+    // console.log('RCCToken code:', code);
 
     const RCCStake = await upgrades.deployProxy(
       RCCStakeFactory,
@@ -51,6 +54,8 @@ async function main() {
 
     // 获取部署后的合约地址
     const rccStakeAddress = await RCCStake.getAddress();
+    const code = await ethers.provider.getCode(rccStakeAddress);
+    console.log('RCCStake code:', code);
     console.log('RCCStake deployed to:', rccStakeAddress);
     // 更新前端的本地环境变量
     writeLocalEnv(
