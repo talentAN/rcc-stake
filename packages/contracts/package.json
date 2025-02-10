@@ -9,6 +9,7 @@
     "set-local-chain": "npx hardhat node",
     "deploy-local": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy-sepolia": "npx hardhat run scripts/deploy.ts --network sepolia",
+    "upgrade-local": "npx hardhat run scripts/upgrade.ts --network localhost",
     "open-local-console": "npx hardhat console --network localhost",
     "debug-local": "pnpm run set-local-chain && pnpm run deploy-local && pnpm run open-local-console",
     "debug-example": "const MyContract = await ethers.getContractAt(\"MyContract\", \"YOUR_CONTRACT_ADDRESS\")await MyContract.setValue(42)"
