@@ -1,6 +1,5 @@
 import { ethers, upgrades } from 'hardhat';
 import { readFileSync, writeFileSync } from 'fs';
-import path from 'path';
 
 const writeLocalEnv = (address: any, filePath: string) => {
   try {
@@ -51,7 +50,8 @@ async function main() {
       RCCStakeFactory,
       [rewardTokenAddress, startBlock, endBlock, RccPerBlock],
       {
-        initializer: 'initialize'
+        initializer: 'initialize',
+        kind: 'uups'
       }
     );
 
@@ -60,44 +60,17 @@ async function main() {
 
     // 获取部署后的合约地址
     const rccStakeAddress = await RCCStake.getAddress();
-
-    // 设置初始 ETH 质押池
-    console.log('Setting up initial ETH staking pool...');
-    const minDepositAmount = ethers.parseEther('0.000001'); // 最小质押数量，比如0.1 ETH
-    const unStakeLockedBlocks = 100; // 解锁所需区块数
-    const poolWeight = 1000; // 池子权重
-    await RCCStake.addPool(
-      ethers.ZeroAddress, // ETH pool 的 stakeTokenAddress 必须是 0x0
-      poolWeight,
-      minDepositAmount,
-      unStakeLockedBlocks,
-      true // withUpdate
-    );
-
-    console.log('ETH staking pool initialized');
-
-    // 设置角色权限
-    const deployer = await ethers.provider.getSigner();
-    const deployerAddress = await deployer.getAddress();
-
-    const ADMIN_ROLE = await RCCStake.ADMIN_ROLE();
-    const UPGRADE_ROLE = await RCCStake.UPGRADE_ROLE();
-
-    await RCCStake.grantRole(ADMIN_ROLE, deployerAddress);
-    await RCCStake.grantRole(UPGRADE_ROLE, deployerAddress);
-
-    console.log('Roles granted to deployer:', deployerAddress);
-
+    const code = await ethers.provider.getCode(rccStakeAddress);
+    console.log('RCCStake code:', code);
+    console.log('RCCStake deployed to:', rccStakeAddress);
     // 更新前端的本地环境变量
     writeLocalEnv(
       {
         token: rewardTokenAddress,
         stake: rccStakeAddress
       },
-      path.join(__dirname, '..', 'f2e', '.env.local')
+      '../f2e/.env.local'
     );
-
-    console.log('Deployment and initialization completed successfully');
   } catch (error) {
     console.error('Error during deployment:', error);
     process.exit(1);

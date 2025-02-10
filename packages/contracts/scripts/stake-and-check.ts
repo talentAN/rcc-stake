@@ -3,7 +3,7 @@ import hre from 'hardhat';
 import { formatEther } from 'viem';
 
 // 替换为你的合约地址
-const contractAddress = '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9';
+const contractAddress = '0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0';
 // 狗日的，这个格式的abi才能正常执行，直接引入JSON不行，为什么？
 // const contractABI = [
 //   'function addPool(address _stakeTokenAddress,uint256 _poolWeight,uint256 _minDepositAmount,uint256 _unStakeLockedBlocks,bool _withUpdate)',
