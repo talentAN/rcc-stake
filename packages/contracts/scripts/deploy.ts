@@ -25,17 +25,20 @@ const writeLocalEnv = (address: any, filePath: string) => {
   }
 };
 
+// 部署 RccToken
+const deployRccToken = async () => {
+  const RccTokenFactory = await ethers.getContractFactory('RccToken');
+  const RCCToken = await RccTokenFactory.deploy();
+  await RCCToken.waitForDeployment();
+  const RCCTokenAddress = await RCCToken.getAddress();
+  console.log('RCCToken deployed to:', RCCTokenAddress);
+  return RCCTokenAddress;
+};
+
 async function main() {
   try {
-    // 部署 RccToken
-    const RccTokenFactory = await ethers.getContractFactory('RccToken');
-    const RCCToken = await RccTokenFactory.deploy();
-    await RCCToken.waitForDeployment();
-    const RCCTokenAddress = await RCCToken.getAddress();
-    console.log('RCCToken deployed to:', RCCTokenAddress);
-
     // 设置基本条件
-    const rewardTokenAddress = RCCTokenAddress;
+    const rewardTokenAddress = await deployRccToken();
     // 质押起始区块高度,可以去sepolia上面读取最新的区块高度
     const startBlock = 6529999;
     // 质押结束的区块高度,sepolia 出块时间是12s,想要质押合约运行x秒,那么endBlock = startBlock+x/12
@@ -94,8 +97,28 @@ async function main() {
         token: rewardTokenAddress,
         stake: rccStakeAddress
       },
-      path.join(__dirname, '..', 'f2e', '.env.local')
+      path.join(__dirname, '..', '..', 'f2e', '.env.local')
     );
+
+    // 验证部署结果
+    console.log('Verifying deployment...');
+
+    // 验证 ETH 池子
+    const pool = await RCCStake.pool(0);
+    console.log('ETH Pool details:', {
+      stakeToken: pool.stakeTokenAmount,
+      weight: pool.poolWeight,
+      minDepositAmount: pool.minDepositAmount,
+      unStakeLockedBlocks: pool.unStakeLockedBlocks
+    });
+
+    // 验证角色
+    const hasAdminRole = await RCCStake.hasRole(ADMIN_ROLE, deployerAddress);
+    const hasUpgradeRole = await RCCStake.hasRole(UPGRADE_ROLE, deployerAddress);
+    console.log('Role verification:', {
+      hasAdminRole,
+      hasUpgradeRole
+    });
 
     console.log('Deployment and initialization completed successfully');
   } catch (error) {
