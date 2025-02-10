@@ -35,20 +35,27 @@ const Home = () => {
   };
 
   const getStakedAmount = useCallback(async () => {
-    if (address && stakeContract) {
-      try {
-        // 没有read方法，为什么？质押方法是可以实现的；看abi没问题，合约的方法也是view
-        const res = await stakeContract?.read?.stakingBalance?.([Pid, address]);
-        if (res) {
-          console.debug('xxx', res);
-          // console.debug('stake-res', formatUnits(res as bigint, 18));
-        } else {
-          console.debug('stake-res', 'No staking balance', res);
-        }
-        // setStakedAmount(formatUnits(res as bigint, 18));
-      } catch (error) {
-        console.debug('getStakedAmount-error', error);
+    if (!address || !stakeContract) {
+      console.debug('地址或合约实例不存在');
+      return;
+    }
+
+    try {
+      console.debug('调用合约方法', {
+        contract: stakeContract,
+        address,
+        pid: 0
+      });
+
+      const res = await stakeContract.read.stakingBalance([0, address]);
+      if (res) {
+        const formattedAmount = formatUnits(BigInt(res as bigint), 18);
+        setStakedAmount(formattedAmount);
+        console.debug('质押数量:', formattedAmount);
       }
+    } catch (error) {
+      console.error('获取质押数量失败:', error);
+      setStakedAmount('0');
     }
   }, [stakeContract, address]);
 
